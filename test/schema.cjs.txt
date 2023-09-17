@@ -1,0 +1,122 @@
+/* eslint-disable */
+// This document was generated automatically by openapi-box
+
+/**
+ * @typedef {import('@sinclair/typebox').TSchema} TSchema
+ */
+
+/**
+ * @template {TSchema} T
+ * @typedef {import('@sinclair/typebox').Static<T>} Static
+ */
+
+/**
+ * @typedef {{
+ *  [Path in keyof schema]: {
+ *    [Method in keyof schema[Path]]: {
+ *      args: Static<schema[Path][Method]['args']>
+ *      data?: Static<schema[Path][Method]['data']>
+ *      error?: Static<schema[Path][Method]['error']>
+ *    }
+ *  }
+ * }} Paths
+ */
+
+/** @typedef {Json[]} JsonArray */
+/** @typedef {{ [key: string | number]: Json }} JsonRecord */
+/** @typedef {string} JsonString */
+/** @typedef {number} JsonNumber */
+/** @typedef {boolean} JsonBoolean */
+/** @typedef {null} JsonNull */
+/** @typedef {JsonArray | JsonRecord | JsonString | JsonNumber | JsonBoolean | JsonNull} Json */
+
+const { Type: T } = require('@sinclair/typebox')
+
+/**
+ * @params {object} [options]
+ * @returns {ReturnType<typeof T.Unsafe<Json>>}
+ */
+const Json = (options) => T.Unsafe(T.Any(options))
+
+const cache = {}
+cache['255a61804302aa4bd8f117420add6257'] = {
+  auth: T.String()
+}
+cache['9e360b975edf5daeacb6640803b6a4c7'] = {
+  id: T.String()
+}
+cache['c80c06529370bd2a6907120430728ec6'] = {
+  deepTitle: T.Optional(T.String())
+}
+cache['8da1342213edf1231cfe5f33446d81ee'] = {
+  filter: T.String(),
+  address: T.Array(T.String()),
+  deep: T.Object(cache['c80c06529370bd2a6907120430728ec6'])
+}
+cache['f4b0f2ddbd1b2fbe02c10d8bd3dd3e37'] = {
+  name: T.String(),
+  age: T.Optional(T.Number()),
+  gender: T.Union([
+    T.Union([T.Literal('batman')]),
+    T.Union([T.Literal('joker')])
+  ])
+}
+cache['5066358f248daf33be676e893f6ad939'] = {
+  title: T.String(),
+  address: T.String()
+}
+cache['53cf15a7ce0ceec5b4f7b8ec0ff695a7'] = {
+  human: T.Object(cache['f4b0f2ddbd1b2fbe02c10d8bd3dd3e37']),
+  address: T.Array(T.Object(cache['5066358f248daf33be676e893f6ad939'])),
+  recursive: Json()
+}
+cache['c31c87a08a18f5fd1f28efc42581b68a'] = {
+  id: T.Optional(T.String())
+}
+cache['734381ed9db8585a070b030440190d32'] = {
+  deepTitle: T.String()
+}
+cache['3a5ec6fa1d653f40ca7005bcd5e1f154'] = {
+  filter: T.String(),
+  address: T.Array(T.String()),
+  deep: T.Object(cache['734381ed9db8585a070b030440190d32'])
+}
+cache['e318cf72abfc5abcd76c7507fd025022'] = {
+  params: T.Object(cache['c31c87a08a18f5fd1f28efc42581b68a']),
+  query: T.Object(cache['3a5ec6fa1d653f40ca7005bcd5e1f154']),
+  body: T.Object(cache['53cf15a7ce0ceec5b4f7b8ec0ff695a7'])
+}
+
+const schema = {
+  '/hello': {
+    GET: {
+      args: T.Void(),
+      data: T.Union([
+        T.Any({ description: 'Default Response', 'x-status-code': '200' })
+      ]),
+      error: T.Union([T.Any()])
+    }
+  },
+  '/some-route/{id}': {
+    POST: {
+      args: T.Object({
+        headers: T.Object(cache['255a61804302aa4bd8f117420add6257']),
+        params: T.Object(cache['9e360b975edf5daeacb6640803b6a4c7']),
+        query: T.Object(cache['8da1342213edf1231cfe5f33446d81ee']),
+        body: T.Object(cache['53cf15a7ce0ceec5b4f7b8ec0ff695a7'], {
+          'x-content-type': 'application/json'
+        })
+      }),
+      data: T.Union([
+        T.Object(cache['e318cf72abfc5abcd76c7507fd025022'], {
+          description: 'description response',
+          'x-status-code': '201',
+          'x-content-type': 'application/json'
+        })
+      ]),
+      error: T.Union([T.Any()])
+    }
+  }
+}
+
+module.exports = { schema }

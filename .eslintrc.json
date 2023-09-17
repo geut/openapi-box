@@ -1,0 +1,9 @@
+{
+  "extends": [
+    "standard"
+  ],
+  "rules": {
+    "dot-notation": "off",
+    "quote-props": "off"
+  }
+}
