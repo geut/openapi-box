@@ -34,8 +34,6 @@ const client = createClient({
 
 3. Enjoy your types and validations.
 
-
-###
 ## Issues
 
 :bug: If you found an issue we encourage you to report it on [github](https://github.com/geut/openapi-box/issues). Please specify your OS and the actions to reproduce it.
