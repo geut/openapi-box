@@ -63,3 +63,4 @@ typings/
 dist
 tmp
 playground
+package-lock.json

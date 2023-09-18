@@ -2,7 +2,6 @@
 
 import { createHash } from 'node:crypto'
 import SwaggerParser from '@apidevtools/swagger-parser'
-import { ResolverError } from '@apidevtools/json-schema-ref-parser'
 import CodeBlockWriter from 'code-block-writer'
 import * as prettier from 'prettier'
 import safeStringify from '@sindresorhus/safe-stringify'
@@ -37,7 +36,7 @@ const createCodeBlockWriter = () => new CodeBlockWriter({
  */
 export const write = async (path, opts = {}) => {
   const { cjs = false, headers = {} } = opts
-
+  let fetchError
   const openapi = await SwaggerParser.validate(/** @type {string} */(path), {
     resolve: {
       http: {
@@ -51,17 +50,22 @@ export const write = async (path, opts = {}) => {
             headers
           })
             .catch(err => {
-              throw new ResolverError({ message: `FetchError: ${err.message}` })
+              fetchError = new Error(`FetchError: ${err.message}`)
+              throw err
             })
             .then(res => {
               if (res.ok) return res
-              throw new ResolverError({ message: `FetchError: [${res.status}] ${res.statusText}` })
+              fetchError = new Error(`FetchError: [${res.status}] ${res.statusText}`)
+              throw fetchError
             })
             .then(res => res.arrayBuffer())
             .then(buf => Buffer.from(buf))
         }
       }
     }
+  }).catch(err => {
+    if (fetchError) throw fetchError
+    throw err
   })
 
   const responseSchemas = []
