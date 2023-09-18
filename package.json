@@ -5,6 +5,7 @@
   "type": "module",
   "browser": "./dist/client.cjs",
   "main": "./dist/client.cjs",
+  "bin": "./bin/cli.js",
   "exports": {
     ".": {
       "require": "./dist/client.cjs",
