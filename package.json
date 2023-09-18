@@ -38,7 +38,8 @@
     "fast-querystring": "^1.1.2",
     "meow": "^12.1.1",
     "ora": "^7.0.1",
-    "prettier": "^3.0.1"
+    "prettier": "^3.0.1",
+    "undici": "^5.24.0"
   },
   "devDependencies": {
     "@fastify/swagger": "^8.8.0",

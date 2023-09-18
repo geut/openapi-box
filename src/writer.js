@@ -5,6 +5,7 @@ import SwaggerParser from '@apidevtools/swagger-parser'
 import CodeBlockWriter from 'code-block-writer'
 import * as prettier from 'prettier'
 import safeStringify from '@sindresorhus/safe-stringify'
+import { fetch } from 'undici'
 
 const scalarTypes = {
   string: 'String',
@@ -39,7 +40,13 @@ export const write = async (path, opts = {}) => {
   const openapi = await SwaggerParser.validate(/** @type {string} */(path), {
     resolve: {
       http: {
-        headers
+        read: (file) => {
+          const h = new Headers()
+          Object.keys(headers).forEach((value, key) => {
+            h.set(String(key), value)
+          })
+          return fetch(file.url).then(res => res.arrayBuffer()).then(buf => Buffer.from(buf))
+        }
       }
     }
   })
