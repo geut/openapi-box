@@ -74,5 +74,8 @@
   "bugs": {
     "url": "https://github.com/geut/openapi-box/issues"
   },
-  "homepage": "https://github.com/geut/openapi-box#readme"
+  "homepage": "https://github.com/geut/openapi-box#readme",
+  "publishConfig": {
+    "access": "public"
+  }
 }
