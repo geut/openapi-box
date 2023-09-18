@@ -2,6 +2,7 @@
 
 import { createHash } from 'node:crypto'
 import SwaggerParser from '@apidevtools/swagger-parser'
+import { ResolverError } from '@apidevtools/json-schema-ref-parser'
 import CodeBlockWriter from 'code-block-writer'
 import * as prettier from 'prettier'
 import safeStringify from '@sindresorhus/safe-stringify'
@@ -46,8 +47,18 @@ export const write = async (path, opts = {}) => {
             h.set(String(key), value)
           })
           return fetch(file.url, {
+            redirect: 'follow',
             headers
-          }).then(res => res.arrayBuffer()).then(buf => Buffer.from(buf))
+          })
+            .catch(err => {
+              throw new ResolverError({ message: `FetchError: ${err.message}` })
+            })
+            .then(res => {
+              if (res.ok) return res
+              throw new ResolverError({ message: `FetchError: [${res.status}] ${res.statusText}` })
+            })
+            .then(res => res.arrayBuffer())
+            .then(buf => Buffer.from(buf))
         }
       }
     }
@@ -412,26 +423,32 @@ export const write = async (path, opts = {}) => {
         responseList.push({
           success,
           text: getWriterString(() => {
-            if (responses[statusCode].content) {
-              const content = responses[statusCode].content
-              const contentType = Object.keys(content)[0]
-              writeType({
-                description: responses[statusCode].description,
-                'x-status-code': `${statusCode}`.toLowerCase(),
-                'x-content-type': contentType,
-                ...content[contentType].schema
-              }, true)
-            } else if (responses[statusCode].schema) {
-              writeType({
-                description: responses[statusCode].description,
-                'x-status-code': `${statusCode}`.toLowerCase(),
-                ...responses[statusCode].schema
-              }, true)
-            } else {
-              w.write(`T.Any(${JSON.stringify({
-                description: responses[statusCode].description,
-                'x-status-code': `${statusCode}`.toLowerCase()
-              })})`)
+            const obj = {
+              description: responses?.[statusCode]?.description,
+              'x-status-code': `${statusCode}`.toLowerCase()
+            }
+
+            try {
+              if (responses[statusCode].content) {
+                const content = responses[statusCode].content
+                const contentType = Object.keys(content)[0]
+                return writeType({
+                  ...obj,
+                  'x-content-type': contentType,
+                  ...content[contentType].schema
+                }, true)
+              }
+
+              if (responses[statusCode].schema) {
+                return writeType({
+                  ...obj,
+                  ...responses[statusCode].schema
+                }, true)
+              }
+
+              w.write(`T.Any(${JSON.stringify(obj)})`)
+            } catch {
+              w.write(`T.Any(${JSON.stringify(obj)})`)
             }
           })
         })
