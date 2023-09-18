@@ -1,6 +1,6 @@
 {
   "name": "@geut/openapi-box",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Generate TypeBox schemas from your openapi.",
   "type": "module",
   "browser": "./dist/client.cjs",
