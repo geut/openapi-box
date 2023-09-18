@@ -24,11 +24,11 @@
   ],
   "scripts": {
     "start": "node index.js",
-    "build": "tsup src/client.js src/writer.js",
+    "build": "tsup src/client.js src/writer.js --dts",
     "test": "node --test",
     "posttest": "npm run lint",
     "lint": "standard",
-    "test:types": "tsc -p jsconfig.json",
+    "test:types": "tsc",
     "prepublishOnly": "npm test && npm run build"
   },
   "dependencies": {

@@ -10,7 +10,7 @@ Generate TypeBox schemas from your openapi. It works for TypeScript and plain Ja
 ## Install
 
 ```bash
-$ npm install @geut/openapi-box
+$ npm install @geut/openapi-box @sinclair/typebox
 ```
 
 ## Usage
