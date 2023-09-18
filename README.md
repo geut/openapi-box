@@ -33,6 +33,7 @@ const client = createClient({
 ```
 
 3. Enjoy your types and validations.
+![openapi](https://github.com/geut/openapi-box/assets/819446/0aa7f5ec-1082-4123-a51e-b862c2094913)
 
 ## Issues
 
