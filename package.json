@@ -31,9 +31,6 @@
     "test:types": "tsc",
     "prepublishOnly": "npm test && npm run build"
   },
-  "peerDependencies": {
-    "@sinclair/typebox": "^0.30.4"
-  },
   "dependencies": {
     "@apidevtools/json-schema-ref-parser": "^10.1.0",
     "@apidevtools/swagger-parser": "^10.1.0",
