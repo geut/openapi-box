@@ -45,7 +45,9 @@ export const write = async (path, opts = {}) => {
           Object.keys(headers).forEach((value, key) => {
             h.set(String(key), value)
           })
-          return fetch(file.url).then(res => res.arrayBuffer()).then(buf => Buffer.from(buf))
+          return fetch(file.url, {
+            headers
+          }).then(res => res.arrayBuffer()).then(buf => Buffer.from(buf))
         }
       }
     }
