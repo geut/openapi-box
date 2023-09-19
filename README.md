@@ -1,5 +1,5 @@
 # openapi-box
-Generate TypeBox schemas from your openapi. It works for TypeScript and plain JavaScript.
+Generate [TypeBox](https://github.com/sinclairzx81/typebox) types from OpenApi IDL + HTTP client library. It works for TypeScript and plain JavaScript.
 
 ![Tests](https://github.com/geut/openapi-box/actions/workflows/test.yml/badge.svg)
 [![JavaScript Style Guide](https://img.shields.io/badge/code_style-standard-brightgreen.svg?style=flat)](https://standardjs.com)
@@ -16,12 +16,12 @@ $ npm install @geut/openapi-box @sinclair/typebox
 ## Usage
 
 
-1. Generate the schema from an openapi url (it can a be filepath too).
+1. Generate the schema from an OpenApi url (it can a be filepath too):
 ```bash
 $ openapi-box https://petstore.swagger.io/v2/swagger.json
 ```
 
-2. Load your schemas into our `fetch` client.
+2. Load your schemas into the `HTTP` client:
 ```js
 import { createClient } from './src/client.js'
 import { schema } from './schema.js'
@@ -32,7 +32,7 @@ const client = createClient({
 })
 ```
 
-3. Enjoy your types and validations.
+3. Enjoy your types + validations out of the "box" :wink::
 ![openapi](https://github.com/geut/openapi-box/assets/819446/0aa7f5ec-1082-4123-a51e-b862c2094913)
 
 ## Issues
