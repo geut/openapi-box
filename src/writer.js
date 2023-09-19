@@ -7,6 +7,8 @@ import * as prettier from 'prettier'
 import safeStringify from '@sindresorhus/safe-stringify'
 import { fetch } from 'undici'
 
+import { cleanupSchema } from './cleanup.js'
+
 const scalarTypes = {
   string: 'String',
   number: 'Number',
@@ -119,7 +121,7 @@ export const write = async (path, opts = {}) => {
 
   w.blankLineIfLastNot()
 
-  const paths = openapi.paths
+  const paths = cleanupSchema(openapi.paths)
   if (paths) {
     Object.keys(paths).forEach(pathKey => {
       Object.keys(paths[pathKey]).forEach(method => {
@@ -243,39 +245,48 @@ export const write = async (path, opts = {}) => {
   }
 
   function writeCompound (schema, isRequired = false) {
-    delete schema.enum
+    const { enum: _, type, anyOf, allOf, ...options } = schema
 
-    const { type, anyOf, allOf, ...options } = schema
+    if (!isRequired) w.write('T.Optional(')
 
     const compoundType = anyOf ? 'Union' : 'Intersect'
     const list = anyOf || allOf
-    w.write(`${isRequired ? '' : 'T.Optional('}T.${compoundType}(`)
 
-    w.write('[')
-    list.forEach(subSchema => {
-      if (typeof subSchema !== 'object') {
-        w.write(`T.Literal(${JSON.stringify(subSchema)})`)
-      } else {
-        if (!('type' in subSchema)) {
-          subSchema.type = type
-        }
-        writeType(subSchema, true)
-      }
-      w.write(',\n')
-    })
-    w.write(']')
+    w.write(`T.${compoundType}(`)
+
+    const hash = checksum(safeStringify({ list }))
+
+    if (!cache.has(hash)) {
+      cache.set(hash, getWriterString(() => {
+        w.write('[')
+        list.forEach(subSchema => {
+          if (typeof subSchema !== 'object') {
+            w.write(`T.Literal(${JSON.stringify(subSchema)})`)
+          } else {
+            if (!('type' in subSchema)) {
+              subSchema.type = type
+            }
+            writeType(subSchema, true)
+          }
+          w.write(',\n')
+        })
+        w.write(']')
+      }))
+    }
+
+    w.write(`cache['${hash}']`)
 
     if (Object.keys(options).length > 0) {
       w.write(`,${JSON.stringify(options)}`)
     }
 
-    w.write(`)${isRequired ? '' : ')'}`)
+    w.write(')')
+
+    if (!isRequired) w.write(')')
   }
 
   function writeObject (schema, isRequired = false) {
-    delete schema.type
-
-    const { properties = {}, required = [], ...options } = schema
+    const { type, properties = {}, required = [], ...options } = schema
 
     if (!isRequired) w.write('T.Optional(')
 
@@ -333,38 +344,48 @@ export const write = async (path, opts = {}) => {
   }
 
   function writeArray (schema, isRequired = false) {
-    delete schema.type
+    const { type, items, ...options } = schema
 
-    const { items, ...options } = schema
-
-    w.write(`${isRequired ? '' : 'T.Optional('}`)
+    if (!isRequired) w.write('T.Optional(')
 
     const isArray = Array.isArray(items)
 
     if (!items || (isArray && items.length === 0) || (!isArray && Object.keys(items).length === 0)) {
       w.write('T.Array(')
       w.write('T.Any()')
-    } else if (isArray) {
-      delete options.additionalItems
-      delete options.minItems
-      delete options.maxItems
-      w.write('T.Tuple(')
-      w.write('[')
-      items.forEach(subSchema => {
-        writeType(subSchema, true)
-        w.write(',')
-      })
-      w.write(']')
     } else {
-      w.write('T.Array(')
-      writeType(items, true)
+      const hash = checksum(JSON.stringify(items))
+
+      if (isArray) {
+        delete options.additionalItems
+        delete options.minItems
+        delete options.maxItems
+        w.write('T.Tuple(')
+        cache.set(hash, getWriterString(() => {
+          w.write('[')
+          items.forEach(subSchema => {
+            writeType(subSchema, true)
+            w.write(',')
+          })
+          w.write(']')
+        }))
+      } else {
+        w.write('T.Array(')
+        cache.set(hash, getWriterString(() => {
+          writeType(items, true)
+        }))
+      }
+
+      w.write(`cache['${hash}']`)
     }
 
     if (Object.keys(options).length > 0) {
       w.write(`,${JSON.stringify(options)}`)
     }
 
-    w.write(`)${isRequired ? '' : ')'}`)
+    w.write(')')
+
+    if (!isRequired) w.write(')')
   }
 
   function buildSchema (paths, pathKey, method) {
@@ -404,7 +425,6 @@ export const write = async (path, opts = {}) => {
         const contentType = Object.keys(requestBody.content)[0]
         const schema = requestBody.content[contentType].schema
         writeObject({
-          description: requestBody.content[contentType].description,
           'x-content-type': contentType,
           ...schema
         }, requestBody.required)
@@ -428,7 +448,6 @@ export const write = async (path, opts = {}) => {
           success,
           text: getWriterString(() => {
             const obj = {
-              description: responses?.[statusCode]?.description,
               'x-status-code': `${statusCode}`.toLowerCase()
             }
 
@@ -488,8 +507,6 @@ export const write = async (path, opts = {}) => {
             w.write(`'${param.name}': `)
             if (!param.schema) {
               param.schema = {
-                description: param.description,
-                title: param.title,
                 items: param.items,
                 type: param.type
               }

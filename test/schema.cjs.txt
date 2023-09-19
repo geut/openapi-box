@@ -45,29 +45,36 @@ cache['255a61804302aa4bd8f117420add6257'] = {
 cache['9e360b975edf5daeacb6640803b6a4c7'] = {
   id: T.String()
 }
+cache['2809284b6e54d0d34017715ffe5636bd'] = T.String()
 cache['c80c06529370bd2a6907120430728ec6'] = {
   deepTitle: T.Optional(T.String())
 }
 cache['8da1342213edf1231cfe5f33446d81ee'] = {
   filter: T.String(),
-  address: T.Array(T.String()),
+  address: T.Array(cache['2809284b6e54d0d34017715ffe5636bd']),
   deep: T.Object(cache['c80c06529370bd2a6907120430728ec6'])
 }
+cache['c772fb62a277e4ea942c9eefaefb4655'] = [T.Literal('batman')]
+cache['a3fe358f59464810fefa67ab749159a7'] = [T.Literal('joker')]
+cache['8a48859dc4294a0307f483f076bba742'] = [
+  T.Union(cache['c772fb62a277e4ea942c9eefaefb4655']),
+  T.Union(cache['a3fe358f59464810fefa67ab749159a7'])
+]
 cache['f4b0f2ddbd1b2fbe02c10d8bd3dd3e37'] = {
   name: T.String(),
   age: T.Optional(T.Number()),
-  gender: T.Union([
-    T.Union([T.Literal('batman')]),
-    T.Union([T.Literal('joker')])
-  ])
+  gender: T.Union(cache['8a48859dc4294a0307f483f076bba742'])
 }
 cache['5066358f248daf33be676e893f6ad939'] = {
   title: T.String(),
   address: T.String()
 }
+cache['a4d5c21a651696fabb83fc7ba1c00c6d'] = T.Object(
+  cache['5066358f248daf33be676e893f6ad939']
+)
 cache['53cf15a7ce0ceec5b4f7b8ec0ff695a7'] = {
   human: T.Object(cache['f4b0f2ddbd1b2fbe02c10d8bd3dd3e37']),
-  address: T.Array(T.Object(cache['5066358f248daf33be676e893f6ad939'])),
+  address: T.Array(cache['a4d5c21a651696fabb83fc7ba1c00c6d']),
   recursive: Json()
 }
 cache['c31c87a08a18f5fd1f28efc42581b68a'] = {
@@ -78,7 +85,7 @@ cache['734381ed9db8585a070b030440190d32'] = {
 }
 cache['3a5ec6fa1d653f40ca7005bcd5e1f154'] = {
   filter: T.String(),
-  address: T.Array(T.String()),
+  address: T.Array(cache['2809284b6e54d0d34017715ffe5636bd']),
   deep: T.Object(cache['734381ed9db8585a070b030440190d32'])
 }
 cache['e318cf72abfc5abcd76c7507fd025022'] = {
@@ -91,9 +98,7 @@ const schema = {
   '/hello': {
     GET: {
       args: T.Void(),
-      data: T.Union([
-        T.Any({ description: 'Default Response', 'x-status-code': '200' })
-      ]),
+      data: T.Union([T.Any({ 'x-status-code': '200' })]),
       error: T.Union([T.Any()])
     }
   },
@@ -109,7 +114,6 @@ const schema = {
       }),
       data: T.Union([
         T.Object(cache['e318cf72abfc5abcd76c7507fd025022'], {
-          description: 'description response',
           'x-status-code': '201',
           'x-content-type': 'application/json'
         })
