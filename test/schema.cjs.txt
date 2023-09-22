@@ -39,6 +39,15 @@ const { Type: T } = require('@sinclair/typebox')
 const Json = (options) => T.Unsafe(T.Any(options))
 
 const cache = {}
+cache['f40229273b744064836829fd7d98a527'] = {
+  hello: T.Boolean()
+}
+cache['e3d810c00d93ba0dd7d50f2e5b6b6d63'] = {
+  message: T.String()
+}
+cache['a335d6815b8d173e3d5aca064954844c'] = {
+  error: T.Boolean()
+}
 cache['255a61804302aa4bd8f117420add6257'] = {
   auth: T.String()
 }
@@ -98,8 +107,27 @@ const schema = {
   '/hello': {
     GET: {
       args: T.Void(),
-      data: T.Union([T.Any({ 'x-status-code': '200' })]),
-      error: T.Union([T.Any()])
+      data: T.Any({ 'x-status-code': '200' }),
+      error: T.Union([])
+    }
+  },
+  '/hello-typed': {
+    GET: {
+      args: T.Void(),
+      data: T.Object(cache['f40229273b744064836829fd7d98a527'], {
+        'x-status-code': '200',
+        'x-content-type': 'application/json'
+      }),
+      error: T.Union([
+        T.Object(cache['e3d810c00d93ba0dd7d50f2e5b6b6d63'], {
+          'x-status-code': '404',
+          'x-content-type': 'application/json'
+        }),
+        T.Object(cache['a335d6815b8d173e3d5aca064954844c'], {
+          'x-status-code': 'default',
+          'x-content-type': 'application/json'
+        })
+      ])
     }
   },
   '/some-route/{id}': {
@@ -112,13 +140,11 @@ const schema = {
           'x-content-type': 'application/json'
         })
       }),
-      data: T.Union([
-        T.Object(cache['e318cf72abfc5abcd76c7507fd025022'], {
-          'x-status-code': '201',
-          'x-content-type': 'application/json'
-        })
-      ]),
-      error: T.Union([T.Any()])
+      data: T.Object(cache['e318cf72abfc5abcd76c7507fd025022'], {
+        'x-status-code': '201',
+        'x-content-type': 'application/json'
+      }),
+      error: T.Union([])
     }
   }
 }

@@ -169,6 +169,7 @@ export const createClient = (options) => {
 
   /** @typedef {typeof schema} Schema */
   /** @typedef {typeof fetch} Fetch */
+  /** @typedef {Omit<Parameters<Fetch>[1], 'body' | 'method'>} FetchInit */
 
   /**
    * @typedef {{
@@ -187,7 +188,7 @@ export const createClient = (options) => {
    * @template {keyof Paths[Path]} Method
    * @typedef {{ path: Path, method: Method } &
    *  (Paths[Path][Method]['args'] extends void ? {} : Pick<Paths[Path][Method], 'args'>) &
-   *  Omit<Parameters<Fetch>[1], 'body' | 'method'>} Request
+   *  FetchInit} Request
    */
 
   /**
@@ -202,25 +203,18 @@ export const createClient = (options) => {
   /**
    * @template {keyof Paths} Path
    * @template {keyof Paths[Path]} Method
-   * @template {Pick<Paths[Path][Method], 'data' | 'error'>} SchemaResponse
-   * @overload
-   * @param {Request<Path, Method>} req
-   * @returns {Promise<Response<SchemaResponse>>}
+   * @typedef {Pick<Paths[Path][Method], 'data' | 'error'>} SchemaResponse
    */
 
   /**
+   * Function to starts the process of fetching a resource from the network based on the `schema` provided.
    * @template {keyof Paths} Path
    * @template {keyof Paths[Path]} Method
-   * @template {Pick<Paths[Path][Method], 'data' | 'error'>} SchemaResponse
-   * @template {{ data?: any, error?: any }} Result
-   * @template {(res: SchemaResponse) => Result} MapResponse
-   * @overload
    * @param {Request<Path, Method>} req
-   * @param {MapResponse} mapResponse
-   * @returns {Promise<Response<Awaited<ReturnType<MapResponse>>>>}
+   * @returns {Promise<Response<SchemaResponse<Path, Method>>>}
    */
-  async function openapiFetch (req, mapResponse) {
-    const { path, method, args } = /** @type {{ path: string, method: string, args: Args }} */(req)
+  async function openapiFetch (req) {
+    const { path, method, args, ...fetchInit } = /** @type {{ path: string, method: string, args: Args } & FetchInit} */(req)
 
     const endpoint = schema[path][method]
 
@@ -235,12 +229,12 @@ export const createClient = (options) => {
     }
 
     try {
-      const headers = new Headers(req.headers)
+      const headers = new Headers(fetchInit.headers)
       let contentType
       if (headers.has('content-type')) {
         contentType = headers.get('content-type')
       } else {
-        contentType = getRequestContentType(req.body, endpoint)
+        contentType = getRequestContentType(args?.body, endpoint)
         if (contentType) headers.set('content-type', contentType)
       }
 
@@ -285,20 +279,17 @@ export const createClient = (options) => {
       const url = new URL(urlString + (args?.query ? `?${queryParser(args.query)}` : ''))
 
       const res = await fetch(url, {
+        ...fetchInit,
+        method,
         headers: reqInfo.headers,
-        body: await bodyParser(reqInfo),
-        ...req
+        body: await bodyParser(reqInfo)
       })
 
-      let result = /** @type {SchemaResponse} */(await parseResponse(endpoint, res))
-
-      if (mapResponse) {
-        result = await mapResponse(result)
-      }
+      const result = await parseResponse(endpoint, res)
 
       return {
-        data: result.data,
-        error: result.error,
+        data: result?.data,
+        error: result?.error,
         res
       }
     } catch (err) {
@@ -314,38 +305,23 @@ export const createClient = (options) => {
   }
 
   /**
+   * Create a fetch endpoint function based on the `schema` provided.
    * @template {keyof Paths} Path
    * @template {keyof Paths[Path]} Method
-   * @template {Pick<Paths[Path][Method], 'data' | 'error'>} SchemaResponse
    * @overload
-   * @param {{ path: Path, method: Method }} req
+   * @param {{ path: Path, method: Method }} endpoint
    * @returns {Paths[Path][Method]['args'] extends void ?
-   *  () => Promise<Response<SchemaResponse>> :
-   *  (args: Omit<Request<Path, Method>, 'path' | 'method'>) => Promise<Response<SchemaResponse>>
+   *  () => Promise<Response<SchemaResponse<Path, Method>>> :
+   *  (args: Paths[Path][Method]['args']) => Promise<Response<SchemaResponse<Path, Method>>>
    * }
    */
-
-  /**
-   * @template {keyof Paths} Path
-   * @template {keyof Paths[Path]} Method
-   * @template {Pick<Paths[Path][Method], 'data' | 'error'>} SchemaResponse
-   * @template {{ data?: any, error?: any }} Result
-   * @template {(res: SchemaResponse) => Result} MapResponse
-   * @overload
-   * @param {{ path: Path, method: Method }} req
-   * @param {MapResponse} mapResponse
-   * @returns {Paths[Path][Method]['args'] extends void ?
-   *   () => Promise<Response<Awaited<ReturnType<MapResponse>>>> :
-   *   (args: Omit<Request<Path, Method>, 'path' | 'method'>) => Promise<Response<Awaited<ReturnType<MapResponse>>>>
-   * }
-   */
-  function openapiFetchBind (req, mapResponse) {
-    return async (opts) => {
+  function openapiFetchBind (endpoint) {
+    return async (args) => {
       return openapiFetch({
-        ...opts,
-        path: req.path,
-        method: req.method
-      }, mapResponse)
+        args,
+        path: endpoint.path,
+        method: endpoint.method
+      })
     }
   }
 

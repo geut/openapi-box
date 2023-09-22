@@ -1,9 +1,15 @@
 {
   "extends": [
-    "standard"
+    "standard",
+    "plugin:jsdoc/recommended-typescript-flavor"
   ],
   "rules": {
     "dot-notation": "off",
-    "quote-props": "off"
+    "quote-props": "off",
+    "jsdoc/require-returns": "off",
+    "jsdoc/require-returns-description": "off",
+    "jsdoc/require-param-description": "off",
+    "jsdoc/valid-types": "off",
+    "jsdoc/require-jsdoc": "off"
   }
 }

@@ -39,6 +39,18 @@ import { Type as T } from '@sinclair/typebox'
 const Json = (options) => T.Unsafe(T.Any(options))
 
 const cache = {}
+cache['f40229273b744064836829fd7d98a527'] = {
+  hello: T.Boolean()
+}
+cache['758696ec9f72013302034e82c22e0efb'] = {
+  error: T.String()
+}
+cache['47d3d183ad8bb259a9f8325cf2ab2d5b'] = {
+  name: T.String()
+}
+cache['80c741e4882ae47cb56c96eeda87aa00'] = {
+  title: T.String()
+}
 cache['255a61804302aa4bd8f117420add6257'] = {
   auth: T.String()
 }
@@ -98,8 +110,45 @@ const schema = {
   '/hello': {
     GET: {
       args: T.Void(),
-      data: T.Union([T.Any({ 'x-status-code': '200' })]),
-      error: T.Union([T.Any()])
+      data: T.Any({ 'x-status-code': '200' }),
+      error: T.Union([T.Any({ 'x-status-code': 'default' })])
+    }
+  },
+  '/hello-typed': {
+    GET: {
+      args: T.Void(),
+      data: T.Object(cache['f40229273b744064836829fd7d98a527'], {
+        'x-status-code': '200',
+        'x-content-type': 'application/json'
+      }),
+      error: T.Union([
+        T.Object(cache['758696ec9f72013302034e82c22e0efb'], {
+          'x-status-code': '404',
+          'x-content-type': 'application/json'
+        })
+      ])
+    }
+  },
+  '/multiple-content': {
+    GET: {
+      args: T.Void(),
+      data: T.Union(
+        [
+          T.Object(cache['47d3d183ad8bb259a9f8325cf2ab2d5b'], {
+            'x-content-type': 'application/json'
+          }),
+          T.Object(cache['80c741e4882ae47cb56c96eeda87aa00'], {
+            'x-content-type': 'application/vnd.v1+json'
+          })
+        ],
+        { 'x-status-code': '200' }
+      ),
+      error: T.Union([
+        T.Object(cache['758696ec9f72013302034e82c22e0efb'], {
+          'x-status-code': '404',
+          'x-content-type': 'application/json'
+        })
+      ])
     }
   },
   '/some-route/{id}': {
@@ -112,13 +161,11 @@ const schema = {
           'x-content-type': 'application/json'
         })
       }),
-      data: T.Union([
-        T.Object(cache['e318cf72abfc5abcd76c7507fd025022'], {
-          'x-status-code': '201',
-          'x-content-type': 'application/json'
-        })
-      ]),
-      error: T.Union([T.Any()])
+      data: T.Object(cache['e318cf72abfc5abcd76c7507fd025022'], {
+        'x-status-code': '201',
+        'x-content-type': 'application/json'
+      }),
+      error: T.Union([T.Any({ 'x-status-code': 'default' })])
     }
   }
 }

@@ -147,7 +147,7 @@ export const write = async (path, opts = {}) => {
 
               const response = responseSchemas.find(r => r.pathKey === pathKey && r.method === method)
               const success = response.list.filter(l => l.success).map(l => l.text).join(',')
-              w.write(`data: T.Union([${success}]),\n`)
+              w.write(`data: ${success},\n`)
               const errors = response.list.filter(l => !l.success).map(l => l.text).join(',')
               w.write(`error: T.Union([${errors}]),\n`)
             }).write(',\n')
@@ -433,39 +433,55 @@ export const write = async (path, opts = {}) => {
 
     // responses object
     const responseList = []
-    let hasSuccess = false
-    let hasError = false
 
     if (responses) {
-      Object.keys(responses).forEach(statusCode => {
-        const success = `${statusCode}`.startsWith('2')
-        if (success) {
-          hasSuccess = true
-        } else {
-          hasError = true
-        }
+      const responsesWithCode = Object.keys(responses).map(code => ({
+        code,
+        ...responses[code]
+      }))
+
+      const defaultResponse = responsesWithCode.find(res => res.code === 'default') || { code: 'default' }
+      const successResponse = responsesWithCode.find(res => `${res.code}`.startsWith('2')) || defaultResponse
+      const errorResponses = responsesWithCode.filter(res => !(`${res.code}`.startsWith('2')))
+
+      const pushResponse = (success, response) => {
         responseList.push({
           success,
           text: getWriterString(() => {
             const obj = {
-              'x-status-code': `${statusCode}`.toLowerCase()
+              'x-status-code': `${response.code}`.toLowerCase()
             }
 
             try {
-              if (responses[statusCode].content) {
-                const content = responses[statusCode].content
-                const contentType = Object.keys(content)[0]
-                return writeType({
-                  ...obj,
-                  'x-content-type': contentType,
-                  ...content[contentType].schema
-                }, true)
+              if (response.content) {
+                const content = response.content
+                const contentTypes = Object.keys(content)
+
+                if (contentTypes.length === 1) {
+                  const contentType = contentTypes[0]
+                  return writeType({
+                    ...obj,
+                    'x-content-type': contentType,
+                    ...content[contentType].schema
+                  }, true)
+                }
+
+                w.write('T.Union([')
+                contentTypes.forEach(contentType => {
+                  writeType({
+                    'x-content-type': contentType,
+                    ...content[contentType].schema
+                  }, true)
+                  w.write(',')
+                })
+                w.write(`], ${JSON.stringify(obj)})`)
+                return
               }
 
-              if (responses[statusCode].schema) {
+              if (response.schema) {
                 return writeType({
                   ...obj,
-                  ...responses[statusCode].schema
+                  ...response.schema
                 }, true)
               }
 
@@ -475,15 +491,14 @@ export const write = async (path, opts = {}) => {
             }
           })
         })
-      })
-    }
+      }
 
-    if (!hasSuccess) {
-      responseList.push({ success: true, text: 'T.Any()' })
-    }
-
-    if (!hasError) {
-      responseList.push({ success: false, text: 'T.Any()' })
+      pushResponse(true, successResponse)
+      if (errorResponses.length > 0) {
+        errorResponses.forEach(res => pushResponse(false, res))
+      } else {
+        pushResponse(false, defaultResponse)
+      }
     }
 
     responseSchemas.push({ pathKey, method, list: responseList })
