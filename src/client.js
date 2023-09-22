@@ -38,6 +38,7 @@
  * }} Schema
  */
 
+/** @typedef {(req: RequestInfo) => Promise<string | null>} FunctionRequestContentType */
 /** @typedef {(value: any) => string} FunctionQueryParser */
 /** @typedef {(req: RequestInfo) => Promise<BodyInit>} FunctionBodyParser */
 /** @typedef {(req: RequestInfo) => Promise<void>} FunctionPreValidation */
@@ -73,7 +74,7 @@ import qs from 'fast-querystring'
 
 const defaultQueryParser = (value) => qs.stringify(value)
 
-const getRequestContentType = (body, endpoint) => {
+const defaultGetRequestContentType = (body, endpoint) => {
   const contentType = endpoint?.args?.properties?.body?.['x-content-type']
   if (contentType) return contentType
   if (body) {
@@ -147,6 +148,7 @@ const defaultArgsValidator = async (req) => {
  *  schema: S
  *  baseUrl: string
  *  fetch?: F
+ *  getRequestContentType?: FunctionRequestContentType
  *  queryParser?: FunctionQueryParser
  *  bodyParser?: FunctionBodyParser
  *  preValidation?: FunctionPreValidation
@@ -158,6 +160,7 @@ export const createClient = (options) => {
     schema,
     baseUrl,
     fetch = globalThis.fetch,
+    getRequestContentType = defaultGetRequestContentType,
     queryParser = defaultQueryParser,
     bodyParser = defaultBodyParser,
     argsValidator = defaultArgsValidator,
@@ -309,18 +312,34 @@ export const createClient = (options) => {
    * @template {keyof Paths} Path
    * @template {keyof Paths[Path]} Method
    * @overload
-   * @param {{ path: Path, method: Method }} endpoint
+   * @param {{ path: Path, method: Method } & FetchInit} endpoint
    * @returns {Paths[Path][Method]['args'] extends void ?
-   *  () => Promise<Response<SchemaResponse<Path, Method>>> :
-   *  (args: Paths[Path][Method]['args']) => Promise<Response<SchemaResponse<Path, Method>>>
+   *  (fetchInit?: FetchInit) => Promise<Response<SchemaResponse<Path, Method>>> :
+   *  (args: Paths[Path][Method]['args'], fetchInit?: FetchInit) => Promise<Response<SchemaResponse<Path, Method>>>
    * }
    */
   function openapiFetchBind (endpoint) {
-    return async (args) => {
+    return async (args, fetchInit = {}) => {
+      const headers = new Headers()
+      const headersA = new Headers(endpoint?.headers)
+      const headersB = new Headers(fetchInit?.headers)
+
+      headersA.forEach((value, key) => {
+        headers.set(key, value)
+      })
+
+      headersB.forEach((value, key) => {
+        headers.set(key, value)
+      })
+
       return openapiFetch({
-        args,
+        ...endpoint,
+        ...fetchInit,
+        // force these properties
+        headers,
         path: endpoint.path,
-        method: endpoint.method
+        method: endpoint.method,
+        args
       })
     }
   }
