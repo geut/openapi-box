@@ -71,7 +71,7 @@ app.get('/multiple-content', {
     }
   }
 }, () => {
-  return { hello: true }
+  return { name: 'test' }
 })
 
 const headers = Type.Object({
@@ -169,13 +169,22 @@ test('basic test', async () => {
       expectTypeOf(data).toEqualTypeOf(/** @type {any} */({ hello: true }))
     })
 
-    await test('client.fetch /hello', async () => {
+    await test('client.fetch /hello-typed', async () => {
       const { data } = await client.fetch({
         path: '/hello-typed',
         method: 'GET'
       })
 
       expectTypeOf(data).toEqualTypeOf({ hello: true })
+    })
+
+    await test('client.fetch /multiple-content', async () => {
+      const { data } = await client.fetch({
+        path: '/multiple-content',
+        method: 'GET'
+      })
+
+      expectTypeOf(data).toEqualTypeOf(/** @type {{ name: string } | { title: string }} */({ name: 'test' }))
     })
 
     await test('client.fetch validation', async () => {
@@ -192,7 +201,9 @@ test('basic test', async () => {
 
       assert.equal(data, null)
       assert.equal(error, null)
-      assert.deepEqual(clientError, {
+      expectTypeOf(clientError).not.toBeNull()
+      expectTypeOf(clientError).toEqualTypeOf(/** @type {import('../src/client.js').FetchClientErrorType} */({
+        code: 'ERR_CLIENT_VALIDATION',
         message: 'client validation error',
         errors: [
           {
@@ -231,7 +242,7 @@ test('basic test', async () => {
             value: undefined
           }
         ]
-      })
+      }))
     })
 
     await test('client.bind', async () => {
@@ -270,10 +281,11 @@ test('basic test', async () => {
           }
         }
       }
+
       const { data, error, clientError } = await postRoute(args)
       assert.equal(error, undefined)
       assert.equal(clientError, undefined)
-      assert.deepEqual(data, args)
+      expectTypeOf(data).toEqualTypeOf(/** @type {import('../tmp/schema.js').Paths['/some-route/{id}']['POST']['data']} */(args))
     })
   })
 })

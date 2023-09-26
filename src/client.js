@@ -18,11 +18,11 @@
  */
 
 /**
- * @template T
  * @typedef {{
+ *  code: 'ERR_ENDPOINT_NOT_FOUND' | 'ERR_CLIENT_VALIDATION' | 'ERR_FETCH_CLIENT'
  *  message: string
  *  stack?: string
- *  errors?: T
+ *  errors?: ValidationErrorType[] | null
  * }} FetchClientErrorType
  */
 
@@ -200,7 +200,7 @@ export const createClient = (options) => {
 
   /**
    * @template {{ data?: any, error?: any }} T
-   * @typedef {Pick<T, 'data' | 'error'> & { clientError?: FetchClientErrorType<ValidationErrorType[]>, res?: FetchResponse }} Response
+   * @typedef {Pick<T, 'data' | 'error'> & { clientError?: FetchClientErrorType, res?: FetchResponse }} Response
    */
 
   /**
@@ -226,6 +226,7 @@ export const createClient = (options) => {
         data: null,
         error: null,
         clientError: {
+          code: 'ERR_ENDPOINT_NOT_FOUND',
           message: `endpoint not found: ${path} ${method}`
         }
       }
@@ -259,6 +260,7 @@ export const createClient = (options) => {
             data: null,
             error: null,
             clientError: {
+              code: 'ERR_CLIENT_VALIDATION',
               message: 'client validation error',
               errors
             }
@@ -300,6 +302,7 @@ export const createClient = (options) => {
         data: null,
         error: null,
         clientError: {
+          code: 'ERR_FETCH_CLIENT',
           message: err.message,
           stack: err.stack
         }
