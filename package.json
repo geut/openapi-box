@@ -31,6 +31,9 @@
     "test:types": "tsc",
     "prepublishOnly": "npm test && npm run build"
   },
+  "peerDependencies": {
+    "@sinclair/typebox": ">=0.26"
+  },
   "dependencies": {
     "@apidevtools/swagger-parser": "^10.1.0",
     "@sindresorhus/safe-stringify": "^1.0.0",
@@ -43,7 +46,7 @@
   },
   "devDependencies": {
     "@fastify/swagger": "^8.8.0",
-    "@sinclair/typebox": "^0.30.4",
+    "@sinclair/typebox": "^0.31.17",
     "@types/node": "^20.6.2",
     "eslint": "^8.46.0",
     "eslint-plugin-jsdoc": "^46.8.1",
