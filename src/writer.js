@@ -121,7 +121,7 @@ export const write = async (path, opts = {}) => {
 
   w.blankLineIfLastNot()
 
-  const paths = cleanupSchema(openapi.paths)
+  const paths = openapi.paths
   if (paths) {
     Object.keys(paths).forEach(pathKey => {
       Object.keys(paths[pathKey]).forEach(method => {
@@ -188,6 +188,8 @@ export const write = async (path, opts = {}) => {
   }
 
   function writeType (schema, isRequired = false) {
+    schema = cleanupSchema(schema)
+
     if (schema.const) {
       writeLiteral(schema, isRequired)
       return
@@ -424,7 +426,7 @@ export const write = async (path, opts = {}) => {
       request.args.set('body', getWriterString(() => {
         const contentType = Object.keys(requestBody.content)[0]
         const schema = requestBody.content[contentType].schema
-        writeObject({
+        writeType({
           'x-content-type': contentType,
           ...schema
         }, requestBody.required)

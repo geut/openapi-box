@@ -1,38 +1,40 @@
-const fields = {
-  title: true,
-  description: true,
-  example: true,
-  examples: true
-}
+const validFields = new Set([
+  'x-status-code',
+  'x-content-type',
+  'type',
+  'properties',
+  'items',
+  'required',
+  'pattern',
+  'enum',
+  'minimum',
+  'maximum',
+  'exclusiveMinimum',
+  'exclusiveMaximum',
+  'multipleOf',
+  'minLength',
+  'maxLength',
+  'minItems',
+  'maxItems',
+  'uniqueItems',
+  'minProperties',
+  'maxProperties',
+  'format',
+  'additionalProperties',
+  'default',
+  'allOf',
+  'oneOf',
+  'anyOf',
+  'not'
+])
 
 export function cleanupSchema (val) {
-  let k, out, tmp
-
-  if (Array.isArray(val)) {
-    out = Array(k = val.length)
-    while (k--) out[k] = (tmp = val[k]) && typeof tmp === 'object' ? cleanupSchema(tmp) : tmp
-    return out
-  }
-
-  if (Object.prototype.toString.call(val) === '[object Object]') {
-    out = {} // null
-
-    for (k in val) {
-      if (fields[k] && Object.prototype.toString.call(val[k]) === '[object String]') continue
-
-      if (k === '__proto__') {
-        Object.defineProperty(out, k, {
-          value: cleanupSchema(val[k]),
-          configurable: true,
-          enumerable: true,
-          writable: true
-        })
-      } else {
-        out[k] = (tmp = val[k]) && typeof tmp === 'object' ? cleanupSchema(tmp) : tmp
-      }
+  const out = {} // null
+  let k
+  for (k in val) {
+    if (validFields.has(k)) {
+      out[k] = val[k]
     }
-    return out
   }
-
-  return val
+  return out
 }
