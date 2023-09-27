@@ -1,6 +1,6 @@
 {
   "name": "@geut/openapi-box",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Generate TypeBox types from OpenApi IDL + HTTP client library.",
   "type": "module",
   "browser": "./dist/client.cjs",
