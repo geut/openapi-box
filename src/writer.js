@@ -33,11 +33,18 @@ const createCodeBlockWriter = () => new CodeBlockWriter({
  * @param {{
  *  cjs?: boolean
  *  headers?: object
+ *  removePrefix?: string
  * }} [opts]
  * @returns {Promise<string>}
  */
 export const write = async (path, opts = {}) => {
   const { cjs = false, headers = {} } = opts
+
+  let removePrefix
+  if (opts.removePrefix) {
+    removePrefix = new RegExp(`^${opts.removePrefix}`)
+  }
+
   let fetchError
   const openapi = await SwaggerParser.validate(/** @type {string} */(path), {
     resolve: {
@@ -131,7 +138,8 @@ export const write = async (path, opts = {}) => {
 
     w.write('const schema = ').inlineBlock(() => {
       Object.keys(paths).forEach(pathKey => {
-        w.write(`'${pathKey}': `).inlineBlock(() => {
+        const pathStr = removePrefix ? pathKey.replace(removePrefix, '') : pathKey
+        w.write(`'${pathStr}': `).inlineBlock(() => {
           Object.keys(paths[pathKey]).forEach(method => {
             w.write(`${method.toUpperCase()}: `).inlineBlock(() => {
               const request = requestSchemas.find(r => r.pathKey === pathKey && r.method === method)

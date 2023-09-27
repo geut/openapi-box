@@ -12,6 +12,7 @@ const cli = meow(`
     --output, -o Output filename, default to "schema.js"
     --header, -h Send headers to the request in case <input> is remote
     --cjs Generate a commonjs file
+    --remove-prefix -r Remove prefix string from every endpoint
 
   Examples
     $ openapi-box ./openapi.json
@@ -35,6 +36,10 @@ const cli = meow(`
     cjs: {
       type: 'boolean',
       default: false
+    },
+    removePrefix: {
+      type: 'string',
+      shortFlag: 'r'
     }
   }
 })
@@ -63,7 +68,8 @@ let schema
 try {
   schema = await write(input, {
     cjs: cli.flags.cjs,
-    headers
+    headers,
+    removePrefix: cli.flags.removePrefix
   })
 } catch (err) {
   spinner.fail(err.message)
