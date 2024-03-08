@@ -9,7 +9,7 @@
   "exports": {
     ".": {
       "require": "./dist/client.cjs",
-      "import": "./src/client.js"
+      "import": "./dist/client.js"
     },
     "./writer": {
       "require": "./dist/writer.cjs",
@@ -18,13 +18,12 @@
     "./package.json": "./package.json"
   },
   "files": [
-    "src",
     "dist",
     "bin"
   ],
   "scripts": {
     "start": "node index.js",
-    "build": "tsup src/client.js src/writer.js --dts",
+    "build": "tsup src/client.js src/writer.js --dts --format esm,cjs",
     "test": "node --test",
     "posttest": "npm run lint",
     "lint": "eslint",
@@ -55,7 +54,7 @@
     "openapi-types": "^12.1.3",
     "qs": "^6.11.2",
     "standard": "^17.1.0",
-    "tsup": "^7.2.0",
+    "tsup": "^8.0.2",
     "typescript": "^5.2.2"
   },
   "standard": {
