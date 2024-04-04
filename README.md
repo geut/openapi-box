@@ -20,7 +20,7 @@ $ npm install @geut/openapi-box @sinclair/typebox
 
 1. Generate the schema from an OpenApi url (it can a be filepath too):
 ```bash
-$ openapi-box https://petstore.swagger.io/v2/swagger.json
+$ openapi-box https://petstore3.swagger.io/api/v3/openapi.json
 ```
 
 2. Load your schemas into the End-to-end typesafe `fetch` client:
