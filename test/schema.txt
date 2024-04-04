@@ -179,8 +179,6 @@ const schema = {
   }
 }
 
-const _components = {
-  schemas: {}
-}
+const _components = {}
 
 export { schema, _components as components }

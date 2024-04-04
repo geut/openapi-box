@@ -179,8 +179,6 @@ const schema = {
   }
 }
 
-const _components = {
-  schemas: {}
-}
+const _components = {}
 
 module.exports = { schema, components: _components }

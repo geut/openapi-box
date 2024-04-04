@@ -160,9 +160,7 @@ export const write = async (path, opts = {}) => {
   if (components) {
     w.write('const _components = ').inlineBlock(() => {
       Object.keys(components).forEach(componentType => {
-        w.write(`'${componentType}': `).inlineBlock(() => {
-          writeComponents(componentType, components[componentType])
-        }).write(',\n')
+        writeComponents(componentType, components[componentType])
       })
     })
   } else {
@@ -568,46 +566,40 @@ export const write = async (path, opts = {}) => {
   function writeComponents (componentType, components) {
     switch (componentType) {
       case 'schemas': {
-        Object.keys(components).forEach(name => {
-          w.write(`'${name}': `)
-          writeType(components[name], true)
-          w.write(',\n')
-        })
+        writeComponent(componentType, components, c => writeType(c, true))
         break
       }
       case 'parameters': {
-        Object.keys(components).forEach(name => {
-          w.write(`'${name}': `)
-          writeParameter(components[name])
-          w.write(',\n')
-        })
+        writeComponent(componentType, components, c => writeParameter(c))
         break
       }
       case 'responses': {
-        Object.keys(components).forEach(name => {
-          w.write(`'${name}': `)
-          writeResponse(components[name])
-          w.write(',\n')
-        })
+        writeComponent(componentType, components, c => writeResponse(c))
         break
       }
       case 'requestBodies': {
-        Object.keys(components).forEach(name => {
-          w.write(`'${name}': `)
-          components[name].required = true
-          writeRequestBody(components[name])
-          w.write(',\n')
+        writeComponent(componentType, components, c => {
+          c.required = true
+          writeRequestBody(c)
         })
         break
       }
       case 'headers' : {
-        Object.keys(components).forEach(name => {
-          w.write(`'${name}': `)
-          writeParameter(components[name])
-          w.write(',\n')
-        })
+        writeComponent(componentType, components, c => writeParameter(c))
         break
       }
     }
+  }
+
+  function writeComponent (componentType, components, cb) {
+    const list = Object.keys(components)
+    if (list.length === 0) return
+    w.write(`'${componentType}': `).inlineBlock(() => {
+      list.forEach(name => {
+        w.write(`'${name}': `)
+        cb(components[name])
+        w.write(',\n')
+      })
+    }).write(',\n')
   }
 }
