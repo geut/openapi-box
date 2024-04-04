@@ -88,7 +88,7 @@ export const write = async (path, opts = {}) => {
   /**
    * @typedef {{
    *  [ComponentType in keyof _components]: {
-   *    [ComponentName in keyof typeof components[ComponentType]]: Static<typeof components[ComponentType][ComponentName]>
+   *    [ComponentName in keyof _components[ComponentType]]: Static<_components[ComponentType][ComponentName]>
    *  }
    * }} components
    */
