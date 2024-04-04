@@ -1,5 +1,5 @@
 # openapi-box
-Generate [TypeBox](https://github.com/sinclairzx81/typebox) types from OpenApi IDL + End-to-end typesafe HTTP client library.
+Generate [TypeBox](https://github.com/sinclairzx81/typebox) types from OpenApi `V3` IDL + End-to-end typesafe HTTP client library.
 
 > It works for TypeScript and JavaScript.
 

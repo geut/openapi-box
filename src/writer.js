@@ -5,8 +5,8 @@ import SwaggerParser from '@apidevtools/swagger-parser'
 import CodeBlockWriter from 'code-block-writer'
 import * as prettier from 'prettier'
 import safeStringify from '@sindresorhus/safe-stringify'
-import { fetch } from 'undici'
 
+import resolver from './resolver.js'
 import { cleanupSchema } from './cleanup.js'
 
 const scalarTypes = {
@@ -47,31 +47,9 @@ export const write = async (path, opts = {}) => {
 
   let fetchError
   const openapi = await SwaggerParser.validate(/** @type {string} */(path), {
-    resolve: {
-      http: {
-        read: (file) => {
-          const h = new Headers()
-          Object.keys(headers).forEach((value, key) => {
-            h.set(String(key), value)
-          })
-          return fetch(file.url, {
-            redirect: 'follow',
-            headers
-          })
-            .catch(err => {
-              fetchError = new Error(`FetchError: ${err.message}`)
-              throw err
-            })
-            .then(res => {
-              if (res.ok) return res
-              fetchError = new Error(`FetchError: [${res.status}] ${res.statusText}`)
-              throw fetchError
-            })
-            .then(res => res.arrayBuffer())
-            .then(buf => Buffer.from(buf))
-        }
-      }
-    }
+    resolve: resolver(headers, (err) => {
+      fetchError = err
+    })
   }).catch(err => {
     if (fetchError) throw fetchError
     throw err
@@ -98,13 +76,21 @@ export const write = async (path, opts = {}) => {
   /**
    * @typedef {{
    *  [Path in keyof schema]: {
-   *    [Method in keyof schema[Path]]: {
-   *      args: Static<schema[Path][Method]['args']>
-   *      data?: Static<schema[Path][Method]['data']>
-   *      error?: Static<schema[Path][Method]['error']>
+   *    [Method in keyof typeof schema[Path]]: {
+   *      args: Static<typeof schema[Path][Method]['args']>
+   *      data?: Static<typeof schema[Path][Method]['data']>
+   *      error?: Static<typeof schema[Path][Method]['error']>
    *    }
    *  }
    * }} Paths
+   */
+
+  /**
+   * @typedef {{
+   *  [ComponentType in keyof _components]: {
+   *    [ComponentName in keyof typeof components[ComponentType]]: Static<typeof components[ComponentType][ComponentName]>
+   *  }
+   * }} components
    */
 
   /** @typedef {Json[]} JsonArray */
@@ -128,7 +114,9 @@ export const write = async (path, opts = {}) => {
 
   w.blankLineIfLastNot()
 
-  const paths = openapi.paths
+  // @ts-ignore
+  const { paths, components } = openapi
+
   if (paths) {
     Object.keys(paths).forEach(pathKey => {
       Object.keys(paths[pathKey]).forEach(method => {
@@ -169,7 +157,21 @@ export const write = async (path, opts = {}) => {
 
   w.blankLineIfLastNot()
 
-  w.write(cjs ? 'module.exports = { schema }' : 'export { schema }')
+  if (components) {
+    w.write('const _components = ').inlineBlock(() => {
+      Object.keys(components).forEach(componentType => {
+        w.write(`'${componentType}': `).inlineBlock(() => {
+          writeComponents(componentType, components[componentType])
+        }).write(',\n')
+      })
+    })
+  } else {
+    w.write('const _components = {}')
+  }
+
+  w.blankLineIfLastNot()
+
+  w.write(cjs ? 'module.exports = { schema, components: _components }' : 'export { schema, _components as components }')
 
   const text = w.toString()
 
@@ -431,14 +433,7 @@ export const write = async (path, opts = {}) => {
     }
 
     if (requestBody) {
-      request.args.set('body', getWriterString(() => {
-        const contentType = Object.keys(requestBody.content)[0]
-        const schema = requestBody.content[contentType].schema
-        writeType({
-          'x-content-type': contentType,
-          ...schema
-        }, requestBody.required)
-      }))
+      request.args.set('body', getWriterString(() => writeRequestBody(requestBody)))
     }
 
     // responses object
@@ -457,49 +452,7 @@ export const write = async (path, opts = {}) => {
       const pushResponse = (success, response) => {
         responseList.push({
           success,
-          text: getWriterString(() => {
-            const obj = {
-              'x-status-code': `${response.code}`.toLowerCase()
-            }
-
-            try {
-              if (response.content) {
-                const content = response.content
-                const contentTypes = Object.keys(content)
-
-                if (contentTypes.length === 1) {
-                  const contentType = contentTypes[0]
-                  return writeType({
-                    ...obj,
-                    'x-content-type': contentType,
-                    ...content[contentType].schema
-                  }, true)
-                }
-
-                w.write('T.Union([')
-                contentTypes.forEach(contentType => {
-                  writeType({
-                    'x-content-type': contentType,
-                    ...content[contentType].schema
-                  }, true)
-                  w.write(',')
-                })
-                w.write(`], ${JSON.stringify(obj)})`)
-                return
-              }
-
-              if (response.schema) {
-                return writeType({
-                  ...obj,
-                  ...response.schema
-                }, true)
-              }
-
-              w.write(`T.Any(${JSON.stringify(obj)})`)
-            } catch {
-              w.write(`T.Any(${JSON.stringify(obj)})`)
-            }
-          })
+          text: getWriterString(() => writeResponse(response))
         })
       }
 
@@ -512,6 +465,46 @@ export const write = async (path, opts = {}) => {
     }
 
     responseSchemas.push({ pathKey, method, list: responseList })
+  }
+
+  function writeRequestBody (requestBody) {
+    const contentType = 'application/json' in requestBody.content ? 'application/json' : Object.keys(requestBody.content)[0]
+    const schema = requestBody.content[contentType].schema
+    writeType({
+      'x-content-type': contentType,
+      ...schema
+    }, requestBody.required)
+  }
+  function writeResponse (response) {
+    const obj = {}
+
+    if ('code' in response) {
+      obj['x-status-code'] = `${response.code}`.toLowerCase()
+    }
+
+    try {
+      if (response.content) {
+        const content = response.content
+        const contentType = 'application/json' in content ? 'application/json' : Object.keys(content)[0]
+
+        return writeType({
+          ...obj,
+          'x-content-type': contentType,
+          ...content[contentType].schema
+        }, true)
+      }
+
+      if (response.schema) {
+        return writeType({
+          ...obj,
+          ...response.schema
+        }, true)
+      }
+
+      w.write(`T.Any(${JSON.stringify(obj)})`)
+    } catch {
+      w.write(`T.Any(${JSON.stringify(obj)})`)
+    }
   }
 
   function writeParameters (parameters) {
@@ -530,16 +523,7 @@ export const write = async (path, opts = {}) => {
         w.inlineBlock(() => {
           parameters.forEach(param => {
             w.write(`'${param.name}': `)
-            if (!param.schema) {
-              param.schema = {
-                items: param.items,
-                type: param.type
-              }
-              if (param.format && param.format !== 'string') {
-                param.schema.format = param.format
-              }
-            }
-            writeType(param.schema, param.required)
+            writeParameter(param)
             w.write(',\n')
           })
         })
@@ -551,5 +535,79 @@ export const write = async (path, opts = {}) => {
     w.write(')')
 
     if (!isRequired) w.write(')')
+  }
+
+  function writeParameter (param) {
+    if (!param.schema) {
+      param.schema = {
+        items: param.items,
+        type: param.type
+      }
+      if (param.format && param.format !== 'string') {
+        param.schema.format = param.format
+      }
+    }
+
+    if (param.in) {
+      const inValue = param.in
+      delete param.in
+      param.schema['x-in'] = inValue
+    }
+
+    const hash = checksum(JSON.stringify(param))
+
+    if (!cache.has(hash)) {
+      cache.set(hash, getWriterString(() => {
+        writeType(param.schema, param.required)
+      }))
+    }
+
+    w.write(`cache['${hash}']`)
+  }
+
+  function writeComponents (componentType, components) {
+    switch (componentType) {
+      case 'schemas': {
+        Object.keys(components).forEach(name => {
+          w.write(`'${name}': `)
+          writeType(components[name], true)
+          w.write(',\n')
+        })
+        break
+      }
+      case 'parameters': {
+        Object.keys(components).forEach(name => {
+          w.write(`'${name}': `)
+          writeParameter(components[name])
+          w.write(',\n')
+        })
+        break
+      }
+      case 'responses': {
+        Object.keys(components).forEach(name => {
+          w.write(`'${name}': `)
+          writeResponse(components[name])
+          w.write(',\n')
+        })
+        break
+      }
+      case 'requestBodies': {
+        Object.keys(components).forEach(name => {
+          w.write(`'${name}': `)
+          components[name].required = true
+          writeRequestBody(components[name])
+          w.write(',\n')
+        })
+        break
+      }
+      case 'headers' : {
+        Object.keys(components).forEach(name => {
+          w.write(`'${name}': `)
+          writeParameter(components[name])
+          w.write(',\n')
+        })
+        break
+      }
+    }
   }
 }

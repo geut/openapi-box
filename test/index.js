@@ -147,10 +147,10 @@ test('basic test', async () => {
     assert.equal(await readFile('./tmp/schema.js', 'utf8'), await readFile('./test/schema.txt', 'utf8'))
   })
 
-  // await test('basic test cjs', async () => {
-  //   await writeFile('./tmp/schema.cjs', await write(JSON.parse(JSON.stringify(app.swagger())), { cjs: true }))
-  //   assert.equal(await readFile('./tmp/schema.cjs', 'utf8'), await readFile('./test/schema.cjs.txt', 'utf8'))
-  // })
+  await test('basic test cjs', async () => {
+    await writeFile('./tmp/schema.cjs', await write(JSON.parse(JSON.stringify(app.swagger())), { cjs: true }))
+    assert.equal(await readFile('./tmp/schema.cjs', 'utf8'), await readFile('./test/schema.cjs.txt', 'utf8'))
+  })
 
   await test('client', async () => {
     const { schema } = await import('../tmp/schema.js')
@@ -184,7 +184,7 @@ test('basic test', async () => {
         method: 'GET'
       })
 
-      expectTypeOf(data).toEqualTypeOf(/** @type {{ name: string } | { title: string }} */({ name: 'test' }))
+      expectTypeOf(data).toEqualTypeOf(/** @type {{ name: string }} */({ name: 'test' }))
     })
 
     await test('client.fetch validation', async () => {
@@ -288,4 +288,43 @@ test('basic test', async () => {
       expectTypeOf(data).toEqualTypeOf(/** @type {import('../tmp/schema.js').Paths['/some-route/{id}']['POST']['data']} */(args))
     })
   })
+})
+
+test('petstore', async () => {
+  const petstore = JSON.parse(await readFile('./test/petstore.json', 'utf-8'))
+  await writeFile('./tmp/petstore.js', await write(petstore))
+  assert.equal(await readFile('./tmp/petstore.js', 'utf8'), await readFile('./test/petstore.txt', 'utf8'))
+
+  const { components } = await import('../tmp/petstore.js')
+
+  assert.ok('schemas' in components)
+  assert.ok(Object.keys(components['schemas']).length > 0)
+  assert.deepEqual(components['schemas']['Pet'], Type.Object({
+    id: Type.Integer({ format: 'int64' }),
+    name: Type.String(),
+    tag: Type.Optional(Type.String())
+  }))
+
+  assert.ok('parameters' in components)
+  assert.ok(Object.keys(components['parameters']).length > 0)
+  assert.deepEqual(components['parameters']['limitParam'], Type.Integer({ format: 'int32', 'x-in': 'query' }))
+
+  assert.ok('responses' in components)
+  assert.ok(Object.keys(components['responses']).length > 0)
+  assert.deepEqual(components['responses']['GeneralError'], Type.Object({
+    code: Type.Integer({ format: 'int32' }),
+    message: Type.String()
+  }, {
+    'x-content-type': 'application/json'
+  }))
+
+  assert.ok('requestBodies' in components)
+  assert.ok(Object.keys(components['requestBodies']).length > 0)
+  assert.deepEqual(components['requestBodies']['Pet'], Type.Object({
+    id: Type.Integer({ format: 'int64' }),
+    name: Type.String(),
+    tag: Type.Optional(Type.String())
+  }, {
+    'x-content-type': 'application/json'
+  }))
 })

@@ -1,6 +1,7 @@
 const validFields = new Set([
   'x-status-code',
   'x-content-type',
+  'x-in',
   'type',
   'properties',
   'items',

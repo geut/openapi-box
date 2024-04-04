@@ -13,13 +13,21 @@
 /**
  * @typedef {{
  *  [Path in keyof schema]: {
- *    [Method in keyof schema[Path]]: {
- *      args: Static<schema[Path][Method]['args']>
- *      data?: Static<schema[Path][Method]['data']>
- *      error?: Static<schema[Path][Method]['error']>
+ *    [Method in keyof typeof schema[Path]]: {
+ *      args: Static<typeof schema[Path][Method]['args']>
+ *      data?: Static<typeof schema[Path][Method]['data']>
+ *      error?: Static<typeof schema[Path][Method]['error']>
  *    }
  *  }
  * }} Paths
+ */
+
+/**
+ * @typedef {{
+ *  [ComponentType in keyof _components]: {
+ *    [ComponentName in keyof typeof components[ComponentType]]: Static<typeof components[ComponentType][ComponentName]>
+ *  }
+ * }} components
  */
 
 /** @typedef {Json[]} JsonArray */
@@ -42,26 +50,37 @@ const cache = {}
 cache['f40229273b744064836829fd7d98a527'] = {
   hello: T.Boolean()
 }
-cache['e3d810c00d93ba0dd7d50f2e5b6b6d63'] = {
-  message: T.String()
+cache['758696ec9f72013302034e82c22e0efb'] = {
+  error: T.String()
 }
-cache['a335d6815b8d173e3d5aca064954844c'] = {
-  error: T.Boolean()
+cache['47d3d183ad8bb259a9f8325cf2ab2d5b'] = {
+  name: T.String()
 }
+cache['b635c194e59c78028705df528dea77d7'] = T.String({ 'x-in': 'header' })
 cache['255a61804302aa4bd8f117420add6257'] = {
-  auth: T.String()
+  auth: cache['b635c194e59c78028705df528dea77d7']
 }
+cache['d51eef39907272763131bef48123fb66'] = T.String({ 'x-in': 'path' })
 cache['9e360b975edf5daeacb6640803b6a4c7'] = {
-  id: T.String()
+  id: cache['d51eef39907272763131bef48123fb66']
 }
+cache['864edea74ad38eac3fa406501729a056'] = T.String({ 'x-in': 'query' })
 cache['2809284b6e54d0d34017715ffe5636bd'] = T.String()
+cache['06c090025e83070271cc497e44239ba7'] = T.Array(
+  cache['2809284b6e54d0d34017715ffe5636bd'],
+  { 'x-in': 'query' }
+)
 cache['c80c06529370bd2a6907120430728ec6'] = {
   deepTitle: T.Optional(T.String())
 }
+cache['d06bd94c06d00ee7cf3e2a89f0944180'] = T.Object(
+  cache['c80c06529370bd2a6907120430728ec6'],
+  { 'x-in': 'query' }
+)
 cache['8da1342213edf1231cfe5f33446d81ee'] = {
-  filter: T.String(),
-  address: T.Array(cache['2809284b6e54d0d34017715ffe5636bd']),
-  deep: T.Object(cache['c80c06529370bd2a6907120430728ec6'])
+  filter: cache['864edea74ad38eac3fa406501729a056'],
+  address: cache['06c090025e83070271cc497e44239ba7'],
+  deep: cache['d06bd94c06d00ee7cf3e2a89f0944180']
 }
 cache['c772fb62a277e4ea942c9eefaefb4655'] = [T.Literal('batman')]
 cache['a3fe358f59464810fefa67ab749159a7'] = [T.Literal('joker')]
@@ -108,7 +127,7 @@ const schema = {
     GET: {
       args: T.Void(),
       data: T.Any({ 'x-status-code': '200' }),
-      error: T.Union([])
+      error: T.Union([T.Any({ 'x-status-code': 'default' })])
     }
   },
   '/hello-typed': {
@@ -119,12 +138,23 @@ const schema = {
         'x-content-type': 'application/json'
       }),
       error: T.Union([
-        T.Object(cache['e3d810c00d93ba0dd7d50f2e5b6b6d63'], {
+        T.Object(cache['758696ec9f72013302034e82c22e0efb'], {
           'x-status-code': '404',
           'x-content-type': 'application/json'
-        }),
-        T.Object(cache['a335d6815b8d173e3d5aca064954844c'], {
-          'x-status-code': 'default',
+        })
+      ])
+    }
+  },
+  '/multiple-content': {
+    GET: {
+      args: T.Void(),
+      data: T.Object(cache['47d3d183ad8bb259a9f8325cf2ab2d5b'], {
+        'x-status-code': '200',
+        'x-content-type': 'application/json'
+      }),
+      error: T.Union([
+        T.Object(cache['758696ec9f72013302034e82c22e0efb'], {
+          'x-status-code': '404',
           'x-content-type': 'application/json'
         })
       ])
@@ -144,9 +174,13 @@ const schema = {
         'x-status-code': '201',
         'x-content-type': 'application/json'
       }),
-      error: T.Union([])
+      error: T.Union([T.Any({ 'x-status-code': 'default' })])
     }
   }
 }
 
-module.exports = { schema }
+const _components = {
+  schemas: {}
+}
+
+module.exports = { schema, components: _components }
