@@ -73,26 +73,6 @@ export const write = async (path, opts = {}) => {
    * @typedef {import('@sinclair/typebox').Static<T>} Static
    */
 
-  /**
-   * @typedef {{
-   *  [Path in keyof schema]: {
-   *    [Method in keyof typeof schema[Path]]: {
-   *      args: Static<typeof schema[Path][Method]['args']>
-   *      data?: Static<typeof schema[Path][Method]['data']>
-   *      error?: Static<typeof schema[Path][Method]['error']>
-   *    }
-   *  }
-   * }} Paths
-   */
-
-  /**
-   * @typedef {{
-   *  [ComponentType in keyof _components]: {
-   *    [ComponentName in keyof _components[ComponentType]]: Static<_components[ComponentType][ComponentName]>
-   *  }
-   * }} components
-   */
-
   /** @typedef {Json[]} JsonArray */
   /** @typedef {{ [key: string | number]: Json }} JsonRecord */
   /** @typedef {string} JsonString */
@@ -104,7 +84,7 @@ export const write = async (path, opts = {}) => {
   ${cjs ? "const { Type: T } = require('@sinclair/typebox')" : "import { Type as T } from '@sinclair/typebox'"}
 
   /**
-   * @params {object} [options]
+   * @param {JsonArray | JsonRecord} [options]
    * @returns {ReturnType<typeof T.Unsafe<Json>>}
    */
   const Json = (options) => T.Unsafe(T.Any(options))

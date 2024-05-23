@@ -1,3 +1,8 @@
+/**
+ * @template {import('@sinclair/typebox').TSchema} T
+ * @typedef {import('@sinclair/typebox').Static<T>} Static
+ */
+
 import test, { after } from 'node:test'
 import assert from 'node:assert'
 import { readFile, writeFile, mkdir } from 'node:fs/promises'
@@ -285,7 +290,7 @@ test('basic test', async () => {
       const { data, error, clientError } = await postRoute(args)
       assert.equal(error, undefined)
       assert.equal(clientError, undefined)
-      expectTypeOf(data).toEqualTypeOf(/** @type {import('../tmp/schema.js').Paths['/some-route/{id}']['POST']['data']} */(args))
+      expectTypeOf(data).toEqualTypeOf(/** @type {Static<typeof import('../tmp/schema.js')['schema']['/some-route/{id}']['POST']['data']>} */(args))
     })
   })
 })
