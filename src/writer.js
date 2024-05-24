@@ -73,6 +73,28 @@ export const write = async (path, opts = {}) => {
    * @typedef {import('@sinclair/typebox').Static<T>} Static
    */
 
+  /**
+   * @typedef {{
+   *  [Path in keyof typeof schema]: {
+   *    [Method in keyof typeof schema[Path]]: {
+   *      [Prop in keyof typeof schema[Path][Method]]: typeof schema[Path][Method][Prop] extends TSchema ?
+   *        Static<typeof schema[Path][Method][Prop]> :
+   *        undefined
+   *    }
+   *  }
+   * }} SchemaType
+   */
+
+  /**
+   * @typedef {{
+   *  [ComponentType in keyof typeof _components]: {
+   *    [ComponentName in keyof typeof _components[ComponentType]]: typeof _components[ComponentType][ComponentName] extends TSchema ?
+   *      Static<typeof _components[ComponentType][ComponentName]> :
+   *      undefined
+   *  }
+   * }} ComponentType
+   */
+
   /** @typedef {Json[]} JsonArray */
   /** @typedef {{ [key: string | number]: Json }} JsonRecord */
   /** @typedef {string} JsonString */
