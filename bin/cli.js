@@ -1,7 +1,9 @@
 #!/usr/bin/env node
-import { writeFile } from 'fs/promises'
-import ora from 'ora'
+import { writeFile } from 'node:fs/promises'
+
 import meow from 'meow'
+import ora from 'ora'
+
 import { write } from '../src/writer.js'
 
 const cli = meow(`
@@ -26,22 +28,22 @@ const cli = meow(`
     output: {
       type: 'string',
       shortFlag: 'o',
-      default: 'schema.js'
+      default: 'schema.js',
     },
     header: {
       type: 'string',
       shortFlag: 'h',
-      isMultiple: true
+      isMultiple: true,
     },
     cjs: {
       type: 'boolean',
-      default: false
+      default: false,
     },
     removePrefix: {
       type: 'string',
-      shortFlag: 'r'
-    }
-  }
+      shortFlag: 'r',
+    },
+  },
 })
 
 if (cli.input.length === 0) {
@@ -53,7 +55,7 @@ const input = cli.input[0]
 const spinner = ora(`Generating schema from ${input}`).start()
 
 const headers = {}
-cli.flags.header.forEach(header => {
+cli.flags.header.forEach((header) => {
   const splitIdx = header.indexOf('=')
   if (splitIdx === -1) {
     spinner.fail('Fetch: the header provided is not valid, it must be: key=value')
@@ -69,7 +71,7 @@ try {
   schema = await write(input, {
     cjs: cli.flags.cjs,
     headers,
-    removePrefix: cli.flags.removePrefix
+    removePrefix: cli.flags.removePrefix,
   })
 } catch (err) {
   spinner.fail(err.message)

@@ -16,7 +16,7 @@
         "in": "query",
         "description": "max records to return",
         "required": true,
-        "schema" : {
+        "schema": {
           "type": "integer",
           "format": "int32"
         }

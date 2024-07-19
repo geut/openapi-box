@@ -1,20 +1,21 @@
 /** @typedef {import('openapi-types').OpenAPI.Document} Document */
 
 import { createHash } from 'node:crypto'
+
 import SwaggerParser from '@apidevtools/swagger-parser'
+import safeStringify from '@sindresorhus/safe-stringify'
 import CodeBlockWriter from 'code-block-writer'
 import * as prettier from 'prettier'
-import safeStringify from '@sindresorhus/safe-stringify'
 
-import resolver from './resolver.js'
 import { cleanupSchema } from './cleanup.js'
+import resolver from './resolver.js'
 
 const scalarTypes = {
   string: 'String',
   number: 'Number',
   boolean: 'Boolean',
   integer: 'Integer',
-  null: 'Null'
+  null: 'Null',
 }
 
 const checksum = str => createHash('md5').update(str).digest('hex')
@@ -24,12 +25,12 @@ const createCodeBlockWriter = () => new CodeBlockWriter({
   newLine: '\r\n', // default: "\n"
   indentNumberOfSpaces: 2, // default: 4
   useTabs: false, // default: false
-  useSingleQuote: true
+  useSingleQuote: true,
 })
 
 /**
  *
- * @param {string | URL} path
+ * @param {string | URL | Document} path
  * @param {{
  *  cjs?: boolean
  *  headers?: object
@@ -49,8 +50,8 @@ export const write = async (path, opts = {}) => {
   const openapi = await SwaggerParser.validate(/** @type {string} */(path), {
     resolve: resolver(headers, (err) => {
       fetchError = err
-    })
-  }).catch(err => {
+    }),
+  }).catch((err) => {
     if (fetchError) throw fetchError
     throw err
   })
@@ -120,17 +121,17 @@ export const write = async (path, opts = {}) => {
   const { paths, components } = openapi
 
   if (paths) {
-    Object.keys(paths).forEach(pathKey => {
-      Object.keys(paths[pathKey]).forEach(method => {
+    Object.keys(paths).forEach((pathKey) => {
+      Object.keys(paths[pathKey]).forEach((method) => {
         buildSchema(paths, pathKey, method)
       })
     })
 
     w.write('const schema = ').inlineBlock(() => {
-      Object.keys(paths).forEach(pathKey => {
+      Object.keys(paths).forEach((pathKey) => {
         const pathStr = removePrefix ? pathKey.replace(removePrefix, '') : pathKey
         w.write(`'${pathStr}': `).inlineBlock(() => {
-          Object.keys(paths[pathKey]).forEach(method => {
+          Object.keys(paths[pathKey]).forEach((method) => {
             w.write(`${method.toUpperCase()}: `).inlineBlock(() => {
               const request = requestSchemas.find(r => r.pathKey === pathKey && r.method === method)
               if (request.args.size > 0) {
@@ -161,7 +162,7 @@ export const write = async (path, opts = {}) => {
 
   if (components) {
     w.write('const _components = ').inlineBlock(() => {
-      Object.keys(components).forEach(componentType => {
+      Object.keys(components).forEach((componentType) => {
         writeComponents(componentType, components[componentType])
       })
     })
@@ -185,10 +186,10 @@ export const write = async (path, opts = {}) => {
     semi: false,
     singleQuote: true,
     parser: 'typescript',
-    trailingComma: 'none'
+    trailingComma: 'none',
   })
 
-  function getWriterString (handler) {
+  function getWriterString(handler) {
     const parentW = w
     w = createCodeBlockWriter()
     handler()
@@ -197,7 +198,7 @@ export const write = async (path, opts = {}) => {
     return str
   }
 
-  function writeType (schema, isRequired = false) {
+  function writeType(schema, isRequired = false) {
     schema = cleanupSchema(schema)
 
     if (schema.const) {
@@ -208,7 +209,7 @@ export const write = async (path, opts = {}) => {
     if (schema.enum) {
       writeCompound({
         ...schema,
-        anyOf: schema.enum
+        anyOf: schema.enum,
       }, isRequired)
       return
     }
@@ -242,7 +243,7 @@ export const write = async (path, opts = {}) => {
     }
   }
 
-  function writeLiteral (schema, isRequired = false) {
+  function writeLiteral(schema, isRequired = false) {
     let { const: value, type, ...options } = schema
 
     value = JSON.stringify(value)
@@ -256,7 +257,7 @@ export const write = async (path, opts = {}) => {
     w.write(`${isRequired ? '' : 'T.Optional('}T.Literal(${value}${options})${isRequired ? '' : ')'}`)
   }
 
-  function writeCompound (schema, isRequired = false) {
+  function writeCompound(schema, isRequired = false) {
     const { enum: _, type, anyOf, allOf, ...options } = schema
 
     if (!isRequired) w.write('T.Optional(')
@@ -271,7 +272,7 @@ export const write = async (path, opts = {}) => {
     if (!cache.has(hash)) {
       cache.set(hash, getWriterString(() => {
         w.write('[')
-        list.forEach(subSchema => {
+        list.forEach((subSchema) => {
           if (typeof subSchema !== 'object') {
             w.write(`T.Literal(${JSON.stringify(subSchema)})`)
           } else {
@@ -297,7 +298,7 @@ export const write = async (path, opts = {}) => {
     if (!isRequired) w.write(')')
   }
 
-  function writeObject (schema, isRequired = false) {
+  function writeObject(schema, isRequired = false) {
     const { type, properties = {}, required = [], ...options } = schema
 
     if (!isRequired) w.write('T.Optional(')
@@ -318,9 +319,9 @@ export const write = async (path, opts = {}) => {
         cache.set(hash, getWriterString(() => {
           if (Object.keys(properties).length > 0) {
             w.inlineBlock(() => {
-              Object.keys(properties).forEach(subSchemaKey => {
+              Object.keys(properties).forEach((subSchemaKey) => {
                 const subSchema = properties[subSchemaKey]
-                w.write(`${subSchemaKey}: `)
+                w.write(`'${subSchemaKey}': `)
                 writeType(subSchema, required.includes(subSchemaKey))
                 w.write(',\n')
               })
@@ -343,7 +344,7 @@ export const write = async (path, opts = {}) => {
     if (!isRequired) w.write(')')
   }
 
-  function writeScalar (schema, isRequired = false) {
+  function writeScalar(schema, isRequired = false) {
     let { type, ...options } = schema
 
     if (Object.keys(options).length) {
@@ -355,7 +356,7 @@ export const write = async (path, opts = {}) => {
     w.write(`${isRequired ? '' : 'T.Optional('}T.${scalarTypes[type]}(${options})${isRequired ? '' : ')'}`)
   }
 
-  function writeArray (schema, isRequired = false) {
+  function writeArray(schema, isRequired = false) {
     const { type, items, ...options } = schema
 
     if (!isRequired) w.write('T.Optional(')
@@ -375,7 +376,7 @@ export const write = async (path, opts = {}) => {
         w.write('T.Tuple(')
         cache.set(hash, getWriterString(() => {
           w.write('[')
-          items.forEach(subSchema => {
+          items.forEach((subSchema) => {
             writeType(subSchema, true)
             w.write(',')
           })
@@ -400,7 +401,7 @@ export const write = async (path, opts = {}) => {
     if (!isRequired) w.write(')')
   }
 
-  function buildSchema (paths, pathKey, method) {
+  function buildSchema(paths, pathKey, method) {
     const endpoint = paths[pathKey][method]
 
     const { responses, parameters = [], requestBody } = endpoint
@@ -442,7 +443,7 @@ export const write = async (path, opts = {}) => {
     if (responses) {
       const responsesWithCode = Object.keys(responses).map(code => ({
         code,
-        ...responses[code]
+        ...responses[code],
       }))
 
       const defaultResponse = responsesWithCode.find(res => res.code === 'default') || { code: 'default' }
@@ -452,7 +453,7 @@ export const write = async (path, opts = {}) => {
       const pushResponse = (success, response) => {
         responseList.push({
           success,
-          text: getWriterString(() => writeResponse(response))
+          text: getWriterString(() => writeResponse(response)),
         })
       }
 
@@ -467,15 +468,15 @@ export const write = async (path, opts = {}) => {
     responseSchemas.push({ pathKey, method, list: responseList })
   }
 
-  function writeRequestBody (requestBody) {
+  function writeRequestBody(requestBody) {
     const contentType = 'application/json' in requestBody.content ? 'application/json' : Object.keys(requestBody.content)[0]
     const schema = requestBody.content[contentType].schema
     writeType({
       'x-content-type': contentType,
-      ...schema
+      ...schema,
     }, requestBody.required)
   }
-  function writeResponse (response) {
+  function writeResponse(response) {
     const obj = {}
 
     if ('code' in response) {
@@ -490,14 +491,14 @@ export const write = async (path, opts = {}) => {
         return writeType({
           ...obj,
           'x-content-type': contentType,
-          ...content[contentType].schema
+          ...content[contentType].schema,
         }, true)
       }
 
       if (response.schema) {
         return writeType({
           ...obj,
-          ...response.schema
+          ...response.schema,
         }, true)
       }
 
@@ -507,7 +508,7 @@ export const write = async (path, opts = {}) => {
     }
   }
 
-  function writeParameters (parameters) {
+  function writeParameters(parameters) {
     if (parameters.length === 0) return
 
     const isRequired = parameters.find(p => p.required)
@@ -521,7 +522,7 @@ export const write = async (path, opts = {}) => {
     if (!cache.has(hash)) {
       cache.set(hash, getWriterString(() => {
         w.inlineBlock(() => {
-          parameters.forEach(param => {
+          parameters.forEach((param) => {
             w.write(`'${param.name}': `)
             writeParameter(param)
             w.write(',\n')
@@ -537,11 +538,11 @@ export const write = async (path, opts = {}) => {
     if (!isRequired) w.write(')')
   }
 
-  function writeParameter (param) {
+  function writeParameter(param) {
     if (!param.schema) {
       param.schema = {
         items: param.items,
-        type: param.type
+        type: param.type,
       }
       if (param.format && param.format !== 'string') {
         param.schema.format = param.format
@@ -565,7 +566,7 @@ export const write = async (path, opts = {}) => {
     w.write(`cache['${hash}']`)
   }
 
-  function writeComponents (componentType, components) {
+  function writeComponents(componentType, components) {
     switch (componentType) {
       case 'schemas': {
         writeComponent(componentType, components, c => writeType(c, true))
@@ -580,7 +581,7 @@ export const write = async (path, opts = {}) => {
         break
       }
       case 'requestBodies': {
-        writeComponent(componentType, components, c => {
+        writeComponent(componentType, components, (c) => {
           c.required = true
           writeRequestBody(c)
         })
@@ -593,11 +594,11 @@ export const write = async (path, opts = {}) => {
     }
   }
 
-  function writeComponent (componentType, components, cb) {
+  function writeComponent(componentType, components, cb) {
     const list = Object.keys(components)
     if (list.length === 0) return
     w.write(`'${componentType}': `).inlineBlock(() => {
-      list.forEach(name => {
+      list.forEach((name) => {
         w.write(`'${name}': `)
         cb(components[name])
         w.write(',\n')

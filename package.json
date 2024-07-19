@@ -1,33 +1,51 @@
 {
   "name": "@geut/openapi-box",
+  "type": "module",
   "version": "4.0.0",
   "description": "Generate TypeBox types from OpenApi IDL + End-to-end typesafe HTTP client library.",
-  "type": "module",
   "browser": "./dist/client.cjs",
-  "main": "./dist/client.cjs",
-  "bin": "./bin/cli.js",
+  "author": {
+    "name": "GEUT",
+    "email": "contact@geutstudio.com"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/geut/openapi-box#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/geut/openapi-box.git"
+  },
+  "bugs": {
+    "url": "https://github.com/geut/openapi-box/issues"
+  },
+  "keywords": [
+    "create",
+    "geut",
+    "module"
+  ],
   "exports": {
     ".": {
-      "require": "./dist/client.cjs",
-      "import": "./dist/client.js"
+      "import": "./dist/client.js",
+      "require": "./dist/client.cjs"
     },
     "./writer": {
-      "require": "./dist/writer.cjs",
-      "import": "./dist/writer.js"
+      "import": "./dist/writer.js",
+      "require": "./dist/writer.cjs"
     },
     "./package.json": "./package.json"
   },
+  "main": "./dist/client.cjs",
+  "bin": "./bin/cli.js",
   "files": [
-    "src",
+    "bin",
     "dist",
-    "bin"
+    "src"
   ],
   "scripts": {
     "start": "node index.js",
     "build": "tsup src/client.js src/writer.js --dts --format esm,cjs",
     "test": "node --test",
     "posttest": "npm run lint",
-    "lint": "eslint",
+    "lint": "eslint .",
     "test:types": "tsc",
     "prepublishOnly": "npm test && npm run build"
   },
@@ -49,6 +67,7 @@
     "@sinclair/typebox": "^0.31.17",
     "@types/node": "^20.6.2",
     "eslint": "^8.46.0",
+    "eslint-config-standard-ext": "^0.0.27",
     "eslint-plugin-jsdoc": "^46.8.1",
     "expect-type": "^0.16.0",
     "fastify": "^4.21.0",
@@ -64,24 +83,6 @@
       "browser"
     ]
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/geut/openapi-box.git"
-  },
-  "keywords": [
-    "create",
-    "geut",
-    "module"
-  ],
-  "author": {
-    "name": "GEUT",
-    "email": "contact@geutstudio.com"
-  },
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/geut/openapi-box/issues"
-  },
-  "homepage": "https://github.com/geut/openapi-box#readme",
   "publishConfig": {
     "access": "public"
   }

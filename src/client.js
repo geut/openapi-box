@@ -68,11 +68,12 @@
  * }} RequestInfo
  */
 
-import './formats.js'
 import { Value } from '@sinclair/typebox/value'
 import qs from 'fast-querystring'
 
-const defaultQueryParser = (value) => qs.stringify(value)
+import './formats.js'
+
+const defaultQueryParser = value => qs.stringify(value)
 
 const defaultGetRequestContentType = (body, endpoint) => {
   const contentType = endpoint?.args?.properties?.body?.['x-content-type']
@@ -115,13 +116,13 @@ const parseResponse = async (endpoint, res) => {
 
   if (res.ok) {
     return {
-      data: await parseContentType(res, endpoint.data, contentType)
+      data: await parseContentType(res, endpoint.data, contentType),
     }
   }
 
   return {
     data: null,
-    error: await parseContentType(res, endpoint.error, contentType)
+    error: await parseContentType(res, endpoint.error, contentType),
   }
 }
 
@@ -137,7 +138,7 @@ const defaultArgsValidator = async (req) => {
   return [...Value.Errors(endpoint.args, args)].map(error => ({
     message: error.message,
     path: error.path,
-    value: error.value
+    value: error.value,
   }))
 }
 
@@ -164,7 +165,7 @@ export const createClient = (options) => {
     queryParser = defaultQueryParser,
     bodyParser = defaultBodyParser,
     argsValidator = defaultArgsValidator,
-    preValidation
+    preValidation,
   } = options
 
   if (!schema) throw new Error('schema is required')
@@ -216,7 +217,7 @@ export const createClient = (options) => {
    * @param {Request<Path, Method>} req
    * @returns {Promise<Response<SchemaResponse<Path, Method>>>}
    */
-  async function openapiFetch (req) {
+  async function openapiFetch(req) {
     const { path, method, args, ...fetchInit } = /** @type {{ path: string, method: string, args: Args } & FetchInit} */(req)
 
     const endpoint = schema[path][method]
@@ -227,8 +228,8 @@ export const createClient = (options) => {
         error: null,
         clientError: {
           code: 'ERR_ENDPOINT_NOT_FOUND',
-          message: `endpoint not found: ${path} ${method}`
-        }
+          message: `endpoint not found: ${path} ${method}`,
+        },
       }
     }
 
@@ -248,7 +249,7 @@ export const createClient = (options) => {
         headers,
         endpoint,
         args,
-        contentType
+        contentType,
       }
 
       if (preValidation) await preValidation(reqInfo)
@@ -262,21 +263,21 @@ export const createClient = (options) => {
             clientError: {
               code: 'ERR_CLIENT_VALIDATION',
               message: 'client validation error',
-              errors
-            }
+              errors,
+            },
           }
         }
       }
 
       if (args?.headers) {
-        Object.keys(args.headers).forEach(prop => {
+        Object.keys(args.headers).forEach((prop) => {
           headers.set(prop, args.headers[prop])
         })
       }
 
       let urlString = baseUrl + path
       if (args?.params) {
-        Object.keys(args.params).forEach(param => {
+        Object.keys(args.params).forEach((param) => {
           urlString = urlString.replace(`{${param}}`, args.params[param])
         })
       }
@@ -287,7 +288,7 @@ export const createClient = (options) => {
         ...fetchInit,
         method,
         headers: reqInfo.headers,
-        body: await bodyParser(reqInfo)
+        body: await bodyParser(reqInfo),
       })
 
       const result = await parseResponse(endpoint, res)
@@ -295,7 +296,7 @@ export const createClient = (options) => {
       return {
         data: result?.data,
         error: result?.error,
-        res
+        res,
       }
     } catch (err) {
       return {
@@ -304,8 +305,8 @@ export const createClient = (options) => {
         clientError: {
           code: 'ERR_FETCH_CLIENT',
           message: err.message,
-          stack: err.stack
-        }
+          stack: err.stack,
+        },
       }
     }
   }
@@ -321,7 +322,7 @@ export const createClient = (options) => {
    *  (args: Paths[Path][Method]['args'], fetchInit?: FetchInit) => Promise<Response<SchemaResponse<Path, Method>>>
    * }
    */
-  function openapiFetchBind (endpoint) {
+  function openapiFetchBind(endpoint) {
     return async (args, fetchInit = {}) => {
       const headers = new Headers()
       const headersA = new Headers(endpoint?.headers)
@@ -342,13 +343,13 @@ export const createClient = (options) => {
         headers,
         path: endpoint.path,
         method: endpoint.method,
-        args
+        args,
       })
     }
   }
 
   return {
     fetch: openapiFetch,
-    bind: openapiFetchBind
+    bind: openapiFetchBind,
   }
 }

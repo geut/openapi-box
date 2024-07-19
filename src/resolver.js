@@ -13,13 +13,13 @@ export default (headers, onError) => ({
       })
       return fetch(file.url, {
         redirect: 'follow',
-        headers
+        headers,
       })
-        .catch(err => {
+        .catch((err) => {
           onError(new Error(`FetchError: ${err.message}`))
           throw err
         })
-        .then(res => {
+        .then((res) => {
           if (res.ok) return res
           const fetchError = new Error(`FetchError: [${res.status}] ${res.statusText}`)
           onError(fetchError)
@@ -27,6 +27,6 @@ export default (headers, onError) => ({
         })
         .then(res => res.arrayBuffer())
         .then(buf => Buffer.from(buf))
-    }
-  }
+    },
+  },
 })

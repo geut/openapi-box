@@ -26,10 +26,10 @@ const validFields = new Set([
   'allOf',
   'oneOf',
   'anyOf',
-  'not'
+  'not',
 ])
 
-export function cleanupSchema (val) {
+export function cleanupSchema(val) {
   const out = {} // null
   let k
   for (k in val) {

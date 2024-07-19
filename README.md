@@ -1,10 +1,12 @@
+![Types for your OpenAPI](.github/assets/logo.webp 'Types for your OpenAPI')
+
 # openapi-box
 Generate [TypeBox](https://github.com/sinclairzx81/typebox) types from OpenApi `V3` IDL + End-to-end typesafe HTTP client library.
 
 > It works for TypeScript and JavaScript.
 
 ![Tests](https://github.com/geut/openapi-box/actions/workflows/test.yml/badge.svg)
-[![JavaScript Style Guide](https://img.shields.io/badge/code_style-standard-brightgreen.svg?style=flat)](https://standardjs.com)
+[![JavaScript Style Guide](https://img.shields.io/badge/code_style-standard--ext-05ae89.svg)](https://github.com/tinchoz49/eslint-config-standard-ext)
 [![standard-readme compliant](https://img.shields.io/badge/readme%20style-standard-brightgreen.svg?style=flat)](https://github.com/RichardLitt/standard-readme)
 
 [![Made by GEUT][geut-badge]][geut-url]
@@ -17,7 +19,6 @@ $ npm install @geut/openapi-box @sinclair/typebox
 
 ## Usage
 
-
 1. Generate the schema from an OpenApi url (it can a be filepath too):
 ```bash
 $ openapi-box https://petstore3.swagger.io/api/v3/openapi.json
@@ -25,8 +26,8 @@ $ openapi-box https://petstore3.swagger.io/api/v3/openapi.json
 
 2. Load your schemas into the End-to-end typesafe `fetch` client:
 ```js
-import { createClient } from './src/client.js'
 import { schema } from './schema.js'
+import { createClient } from './src/client.js'
 
 const client = createClient({
   schema,
