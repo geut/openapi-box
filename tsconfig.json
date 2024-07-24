@@ -3,6 +3,7 @@
     "target": "ES2022",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    "types": ["./test/env.d.ts"],
     "allowJs": true,
     "checkJs": true,
     "noEmit": true,
@@ -11,5 +12,5 @@
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true
   },
-  "include": ["src/**/*", "test/**/*", "playground/**/*", "tmp/**/*"]
+  "include": ["src/**/*", "test/**/*", "playground/**/*", "tmp/**/*", "./schema.js", "./test.js"]
 }

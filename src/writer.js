@@ -75,6 +75,10 @@ export const write = async (path, opts = {}) => {
    */
 
   /**
+   * @typedef {import('@sinclair/typebox').SchemaOptions} SchemaOptions
+   */
+
+  /**
    * @typedef {{
    *  [Path in keyof typeof schema]: {
    *    [Method in keyof typeof schema[Path]]: {
@@ -96,21 +100,51 @@ export const write = async (path, opts = {}) => {
    * }} ComponentType
    */
 
-  /** @typedef {Json[]} JsonArray */
-  /** @typedef {{ [key: string | number]: Json }} JsonRecord */
-  /** @typedef {string} JsonString */
-  /** @typedef {number} JsonNumber */
-  /** @typedef {boolean} JsonBoolean */
-  /** @typedef {null} JsonNull */
-  /** @typedef {JsonArray | JsonRecord | JsonString | JsonNumber | JsonBoolean | JsonNull} Json */
-
-  ${cjs ? "const { Type: T } = require('@sinclair/typebox')" : "import { Type as T } from '@sinclair/typebox'"}
+  ${cjs ? "const { Type: T, TypeRegistry, Kind } = require('@sinclair/typebox')" : "import { Type as T, TypeRegistry, Kind } from '@sinclair/typebox'"}
+  ${cjs ? "const { Value } = require('@sinclair/typebox/value')" : "import { Value } from '@sinclair/typebox/value'"}
 
   /**
-   * @param {JsonArray | JsonRecord} [options]
-   * @returns {ReturnType<typeof T.Unsafe<Json>>}
+   * @template {TSchema[]} T
+   * @typedef {{
+   *  [Kind]: 'UnionOneOf'
+   *  static: { [K in keyof T]: Static<T[K]> }[number]
+   *  oneOf: T
+   * } & TSchema} TUnionOneOf
    */
-  const Json = (options) => T.Unsafe(T.Any(options))
+
+  /**
+   * @template {TSchema[]} T
+   * @param {[...T]} oneOf
+   * @param {SchemaOptions} [options={}]
+   * @returns {TUnionOneOf<T>}
+   */
+  const UnionOneOf = (oneOf, options = {}) => {
+    /**
+     * Checks if the value matches exactly one schema in the union.
+     *
+     * @param {TUnionOneOf<TSchema[]>} schema - The union schema to check against.
+     * @param {unknown} value - The value to check.
+     * @returns {boolean} True if the value matches exactly one schema, otherwise false.
+     */
+    function UnionOneOfCheck(schema, value) {
+      return (
+        1 ===
+        schema.oneOf.reduce(
+          (acc, schema) => (Value.Check(schema, value) ? acc + 1 : acc),
+          0
+        )
+      )
+    }
+
+    if (!TypeRegistry.Has('UnionOneOf'))
+      TypeRegistry.Set('UnionOneOf', UnionOneOfCheck)
+
+    return /** @type {TUnionOneOf<typeof oneOf>} */({
+      ...options,
+      [Kind]: 'UnionOneOf',
+      oneOf
+    })
+  }
 
   __CACHE__
   `)
@@ -185,7 +219,7 @@ export const write = async (path, opts = {}) => {
   return await prettier.format(text.replace('__CACHE__', `${cacheW.toString()}\n`), {
     semi: false,
     singleQuote: true,
-    parser: 'typescript',
+    parser: 'babel',
     trailingComma: 'none',
   })
 
@@ -214,7 +248,7 @@ export const write = async (path, opts = {}) => {
       return
     }
 
-    if (schema.anyOf || schema.allOf) {
+    if (schema.anyOf || schema.allOf || schema.oneOf) {
       writeCompound(schema, isRequired)
       return
     }
@@ -258,14 +292,19 @@ export const write = async (path, opts = {}) => {
   }
 
   function writeCompound(schema, isRequired = false) {
-    const { enum: _, type, anyOf, allOf, ...options } = schema
+    const { enum: _, type, anyOf, allOf, oneOf, ...options } = schema
 
     if (!isRequired) w.write('T.Optional(')
 
-    const compoundType = anyOf ? 'Union' : 'Intersect'
-    const list = anyOf || allOf
+    const compoundType = anyOf
+      ? 'T.Union'
+      : allOf
+        ? 'T.Intersect'
+        : 'UnionOneOf'
 
-    w.write(`T.${compoundType}(`)
+    const list = anyOf || allOf || oneOf
+
+    w.write(`${compoundType}(`)
 
     const hash = checksum(safeStringify({ list }))
 
@@ -304,12 +343,28 @@ export const write = async (path, opts = {}) => {
     if (!isRequired) w.write('T.Optional(')
 
     let optionsString
-    if (Object.keys(options).length > 0) {
-      optionsString = JSON.stringify(options)
+    const optionsKeys = Object.keys(options)
+    if (optionsKeys.length > 0) {
+      optionsString = getWriterString(() => {
+        w.inlineBlock(() => {
+          optionsKeys.forEach((optionKey) => {
+            const value = options[optionKey]
+            w.write(`'${optionKey}': `)
+            if (optionKey === 'additionalProperties' && value?.type) {
+              writeType(value, true)
+            } else {
+              w.write(JSON.stringify(value))
+            }
+            w.write(',\n')
+          })
+        })
+      })
     }
 
-    if (Object.keys(properties).length === 0) {
-      w.write(`Json(${optionsString || ''})`)
+    const propertyKeys = Object.keys(properties)
+
+    if (propertyKeys.length === 0) {
+      w.write(`T.Object({}${optionsString ? ',' + optionsString : ''})`)
     } else {
       const hash = checksum(safeStringify({ properties, required }))
 
@@ -317,9 +372,9 @@ export const write = async (path, opts = {}) => {
 
       if (!cache.has(hash)) {
         cache.set(hash, getWriterString(() => {
-          if (Object.keys(properties).length > 0) {
+          if (propertyKeys.length > 0) {
             w.inlineBlock(() => {
-              Object.keys(properties).forEach((subSchemaKey) => {
+              propertyKeys.forEach((subSchemaKey) => {
                 const subSchema = properties[subSchemaKey]
                 w.write(`'${subSchemaKey}': `)
                 writeType(subSchema, required.includes(subSchemaKey))
@@ -333,11 +388,9 @@ export const write = async (path, opts = {}) => {
       }
 
       w.write(`cache['${hash}']`)
-
       if (optionsString) {
         w.write(`,${optionsString}`)
       }
-
       w.write(')')
     }
 
@@ -569,6 +622,7 @@ export const write = async (path, opts = {}) => {
   function writeComponents(componentType, components) {
     switch (componentType) {
       case 'schemas': {
+        console.log(components)
         writeComponent(componentType, components, c => writeType(c, true))
         break
       }
