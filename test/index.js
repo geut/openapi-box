@@ -90,12 +90,22 @@ const querystring = Type.Object({
   }),
 })
 
+const CoordinatesSchema = Type.Object({
+  lat: Type.Number(),
+  long: Type.Number(),
+}, {
+  $id: 'Coordinates',
+})
+
+app.addSchema(CoordinatesSchema)
+
 const AddressSchema = Type.Array(
   Type.Object({
     title: Type.String(),
     address: Type.String(),
+    coordinates: Type.Ref(CoordinatesSchema),
   }),
-  { $id: 'address' }
+  { $id: 'Address' }
 )
 
 app.addSchema(AddressSchema)
@@ -109,7 +119,7 @@ const body = Type.Object({
       Type.Literal('joker'),
     ]),
   }),
-  address: Type.Ref(AddressSchema, { $ref: 'address#' }),
+  address: Type.Ref(AddressSchema),
   recursive: Type.Object({}),
 })
 
@@ -129,7 +139,7 @@ app.post('/some-route/:id', {
       }, { description: 'description response' }),
     },
   },
-}, (req, reply) => ({
+}, req => ({
   headers: {
     auth: req.headers.auth,
   },
@@ -138,7 +148,7 @@ app.post('/some-route/:id', {
   body: req.body,
 }))
 
-test.only('basic test', async () => {
+test('basic test', async () => {
   after(async () => {
     await app.close()
   })
@@ -147,153 +157,156 @@ test.only('basic test', async () => {
 
   await mkdir('./tmp').catch(() => {})
 
-  await test.only('esm', async (t) => {
-    console.log(JSON.stringify(app.swagger(), null, 2))
-    // await writeFile('./tmp/schema.js', await write(JSON.parse(JSON.stringify(app.swagger()))))
-    // t.assert.snapshot(await readFile('./tmp/schema.js', 'utf8'))
+  await test('esm', async (t) => {
+    await writeFile('./tmp/schema.js', await write(JSON.parse(JSON.stringify(app.swagger()))))
+    t.assert.snapshot(await readFile('./tmp/schema.js', 'utf8'))
   })
 
-  // await test('basic test cjs', async (t) => {
-  //   await writeFile('./tmp/schema.cjs', await write(JSON.parse(JSON.stringify(app.swagger())), { cjs: true }))
-  //   t.assert.snapshot(await readFile('./tmp/schema.cjs', 'utf8'))
-  // })
+  await test('basic test cjs', async (t) => {
+    await writeFile('./tmp/schema.cjs', await write(JSON.parse(JSON.stringify(app.swagger())), { cjs: true }))
+    t.assert.snapshot(await readFile('./tmp/schema.cjs', 'utf8'))
+  })
 
-  // await test('client', async () => {
-  //   const { schema } = await import('../tmp/schema.js')
-  //   const client = createClient({
-  //     schema,
-  //     baseUrl: address,
-  //     queryParser: qs.stringify,
-  //   })
+  await test('client', async () => {
+    const { schema } = await import('../tmp/schema.js')
+    const client = createClient({
+      schema,
+      baseUrl: address,
+      queryParser: qs.stringify,
+    })
 
-  //   await test('client.fetch /hello', async () => {
-  //     const { data } = await client.fetch({
-  //       path: '/hello',
-  //       method: 'GET',
-  //     })
+    await test('client.fetch /hello', async () => {
+      const { data } = await client.fetch({
+        path: '/hello',
+        method: 'GET',
+      })
 
-  //     expectTypeOf(data).toEqualTypeOf(/** @type {any} */({ hello: true }))
-  //   })
+      expectTypeOf(data).toEqualTypeOf(/** @type {any} */({ hello: true }))
+    })
 
-  //   await test('client.fetch /hello-typed', async () => {
-  //     const { data } = await client.fetch({
-  //       path: '/hello-typed',
-  //       method: 'GET',
-  //     })
+    await test('client.fetch /hello-typed', async () => {
+      const { data } = await client.fetch({
+        path: '/hello-typed',
+        method: 'GET',
+      })
 
-  //     expectTypeOf(data).toEqualTypeOf({ hello: true })
-  //   })
+      expectTypeOf(data).toEqualTypeOf({ hello: true })
+    })
 
-  //   await test('client.fetch /multiple-content', async () => {
-  //     const { data } = await client.fetch({
-  //       path: '/multiple-content',
-  //       method: 'GET',
-  //     })
+    await test('client.fetch /multiple-content', async () => {
+      const { data } = await client.fetch({
+        path: '/multiple-content',
+        method: 'GET',
+      })
 
-  //     expectTypeOf(data).toEqualTypeOf(/** @type {{ name: string }} */({ name: 'test' }))
-  //   })
+      expectTypeOf(data).toEqualTypeOf(/** @type {{ name: string }} */({ name: 'test' }))
+    })
 
-  //   await test('client.fetch validation', async () => {
-  //     const { data, error, clientError } = await client.fetch({
-  //       path: '/some-route/{id}',
-  //       method: 'POST',
-  //       args: {
-  //         params: {
-  //           // @ts-ignore
-  //           id: 2,
-  //         },
-  //       },
-  //     })
+    await test('client.fetch validation', async () => {
+      const { data, error, clientError } = await client.fetch({
+        path: '/some-route/{id}',
+        method: 'POST',
+        args: {
+          params: {
+            // @ts-ignore
+            id: 2,
+          },
+        },
+      })
 
-  //     assert.equal(data, null)
-  //     assert.equal(error, null)
-  //     expectTypeOf(clientError).not.toBeNull()
-  //     expectTypeOf(clientError).toEqualTypeOf(/** @type {import('../src/client.js').FetchClientErrorType} */({
-  //       code: 'ERR_CLIENT_VALIDATION',
-  //       message: 'client validation error',
-  //       errors: [
-  //         {
-  //           message: 'Expected object',
-  //           path: '/headers',
-  //           value: undefined,
-  //         },
-  //         {
-  //           message: 'Expected string',
-  //           path: '/params/id',
-  //           value: 2,
-  //         },
-  //         {
-  //           message: 'Expected object',
-  //           path: '/query',
-  //           value: undefined,
-  //         },
-  //         {
-  //           message: 'Expected object',
-  //           path: '/body',
-  //           value: undefined,
-  //         },
-  //         {
-  //           message: 'Expected required property',
-  //           path: '/headers',
-  //           value: undefined,
-  //         },
-  //         {
-  //           message: 'Expected required property',
-  //           path: '/query',
-  //           value: undefined,
-  //         },
-  //         {
-  //           message: 'Expected required property',
-  //           path: '/body',
-  //           value: undefined,
-  //         },
-  //       ],
-  //     }))
-  //   })
+      assert.equal(data, null)
+      assert.equal(error, null)
+      expectTypeOf(clientError).not.toBeNull()
+      expectTypeOf(clientError).toEqualTypeOf(/** @type {import('../src/client.js').FetchClientErrorType} */({
+        code: 'ERR_CLIENT_VALIDATION',
+        message: 'client validation error',
+        errors: [
+          {
+            message: 'Expected object',
+            path: '/headers',
+            value: undefined,
+          },
+          {
+            message: 'Expected string',
+            path: '/params/id',
+            value: 2,
+          },
+          {
+            message: 'Expected object',
+            path: '/query',
+            value: undefined,
+          },
+          {
+            message: 'Expected object',
+            path: '/body',
+            value: undefined,
+          },
+          {
+            message: 'Expected required property',
+            path: '/headers',
+            value: undefined,
+          },
+          {
+            message: 'Expected required property',
+            path: '/query',
+            value: undefined,
+          },
+          {
+            message: 'Expected required property',
+            path: '/body',
+            value: undefined,
+          },
+        ],
+      }))
+    })
 
-  //   await test('client.bind', async () => {
-  //     const postRoute = client.bind({
-  //       path: '/some-route/{id}',
-  //       method: 'POST',
-  //     })
+    await test('client.bind', async () => {
+      const postRoute = client.bind({
+        path: '/some-route/{id}',
+        method: 'POST',
+      })
 
-  //     /** @type {Parameters<typeof postRoute>[0]} */
-  //     const args = {
-  //       headers: {
-  //         auth: 'test',
-  //       },
-  //       params: {
-  //         id: '1',
-  //       },
-  //       query: {
-  //         filter: 'some filter',
-  //         address: ['addres'],
-  //         deep: {
-  //           deepTitle: 'test',
-  //         },
-  //       },
-  //       body: {
-  //         human: {
-  //           age: 30,
-  //           name: 'bruce',
-  //           gender: 'batman',
-  //         },
-  //         address: [{
-  //           address: 'addres1',
-  //           title: 'test',
-  //         }],
-  //         recursive: {
-  //           testing: true,
-  //         },
-  //       },
-  //     }
+      /** @type {Parameters<typeof postRoute>[0]} */
+      const args = {
+        headers: {
+          auth: 'test',
+        },
+        params: {
+          id: '1',
+        },
+        query: {
+          filter: 'some filter',
+          address: ['addres'],
+          deep: {
+            deepTitle: 'test',
+          },
+        },
+        body: {
+          human: {
+            age: 30,
+            name: 'bruce',
+            gender: 'batman',
+          },
+          address: [{
+            address: 'addres1',
+            title: 'test',
+            coordinates: {
+              lat: 1,
+              long: 2,
+            },
+          }],
+          recursive: {
+            testing: true,
+          },
+        },
+      }
 
-  //     const { data, error, clientError } = await postRoute(args)
-  //     assert.equal(error, undefined)
-  //     assert.equal(clientError, undefined)
-  //     expectTypeOf(data).toEqualTypeOf(/** @type {import('../tmp/schema.js').SchemaType['/some-route/{id}']['POST']['data']} */(args))
-  //   })
-  // })
+      const { data, error, clientError } = await postRoute(args)
+      assert.equal(error, undefined)
+      assert.equal(clientError, undefined)
+      expectTypeOf(data).toEqualTypeOf(/** @type {import('../tmp/schema.js').SchemaType['/some-route/{id}']['POST']['data']} */(args))
+    })
+  })
 })
 
 test('petstore.json', async (t) => {

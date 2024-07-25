@@ -12,5 +12,5 @@
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true
   },
-  "include": ["src/**/*", "test/**/*", "playground/**/*", "tmp/**/*", "./schema.js", "./test.js"]
+  "include": ["src/**/*", "test/**/*", "playground/**/*", "tmp/**/*"]
 }
