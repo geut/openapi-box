@@ -1,13 +1,12 @@
-/** @typedef {import('openapi-types').OpenAPI.Document} Document */
+/** @typedef {import('@apidevtools/json-schema-ref-parser').JSONSchema} JSONSchema */
 
-import { createHash } from 'node:crypto'
-
-import SwaggerParser from '@apidevtools/swagger-parser'
-import safeStringify from '@sindresorhus/safe-stringify'
+import SwaggerParser from '@apidevtools/json-schema-ref-parser'
 import CodeBlockWriter from 'code-block-writer'
+import pascalcase from 'pascalcase'
 import * as prettier from 'prettier'
 
-import { cleanupSchema } from './cleanup.js'
+import { cleanupSchema, extractSchemaOptions, kRef } from './cleanup.js'
+import headTemplate from './head-template.js'
 import resolver from './resolver.js'
 
 const scalarTypes = {
@@ -17,8 +16,6 @@ const scalarTypes = {
   integer: 'Integer',
   null: 'Null',
 }
-
-const checksum = str => createHash('md5').update(str).digest('hex')
 
 const createCodeBlockWriter = () => new CodeBlockWriter({
   // optional options
@@ -30,7 +27,7 @@ const createCodeBlockWriter = () => new CodeBlockWriter({
 
 /**
  *
- * @param {string | URL | Document} path
+ * @param {string | JSONSchema} source
  * @param {{
  *  cjs?: boolean
  *  headers?: object
@@ -38,7 +35,7 @@ const createCodeBlockWriter = () => new CodeBlockWriter({
  * }} [opts]
  * @returns {Promise<string>}
  */
-export const write = async (path, opts = {}) => {
+export const write = async (source, opts = {}) => {
   const { cjs = false, headers = {} } = opts
 
   let removePrefix
@@ -46,75 +43,43 @@ export const write = async (path, opts = {}) => {
     removePrefix = new RegExp(`^${opts.removePrefix}`)
   }
 
+  const responseSchemas = []
+  const requestSchemas = []
+  let w = createCodeBlockWriter()
+
+  w.writeLine(headTemplate(cjs))
+  w.blankLineIfLastNot()
+
+  /** @type {Map<string, string>} */
+  const refs = new Map()
+
   let fetchError
-  const openapi = await SwaggerParser.validate(/** @type {string} */(path), {
+  const openapi = await SwaggerParser.dereference(source, {
     resolve: resolver(headers, (err) => {
       fetchError = err
     }),
+    dereference: {
+      onDereference: (path, value) => {
+        path = pascalcase(path)
+        if (!refs.has(path)) {
+          refs.set(path, getWriterString(() => writeType(value, true)))
+          value[kRef] = path
+        }
+      },
+    },
   }).catch((err) => {
     if (fetchError) throw fetchError
     throw err
   })
 
-  const responseSchemas = []
-  const requestSchemas = []
-  let w = createCodeBlockWriter()
-
-  const cache = new Map()
-
-  w.writeLine(`/* eslint-disable */
-  // This document was generated automatically by openapi-box
-
-  /**
-   * @typedef {import('@sinclair/typebox').TSchema} TSchema
-   */
-
-  /**
-   * @template {TSchema} T
-   * @typedef {import('@sinclair/typebox').Static<T>} Static
-   */
-
-  /**
-   * @typedef {{
-   *  [Path in keyof typeof schema]: {
-   *    [Method in keyof typeof schema[Path]]: {
-   *      [Prop in keyof typeof schema[Path][Method]]: typeof schema[Path][Method][Prop] extends TSchema ?
-   *        Static<typeof schema[Path][Method][Prop]> :
-   *        undefined
-   *    }
-   *  }
-   * }} SchemaType
-   */
-
-  /**
-   * @typedef {{
-   *  [ComponentType in keyof typeof _components]: {
-   *    [ComponentName in keyof typeof _components[ComponentType]]: typeof _components[ComponentType][ComponentName] extends TSchema ?
-   *      Static<typeof _components[ComponentType][ComponentName]> :
-   *      undefined
-   *  }
-   * }} ComponentType
-   */
-
-  /** @typedef {Json[]} JsonArray */
-  /** @typedef {{ [key: string | number]: Json }} JsonRecord */
-  /** @typedef {string} JsonString */
-  /** @typedef {number} JsonNumber */
-  /** @typedef {boolean} JsonBoolean */
-  /** @typedef {null} JsonNull */
-  /** @typedef {JsonArray | JsonRecord | JsonString | JsonNumber | JsonBoolean | JsonNull} Json */
-
-  ${cjs ? "const { Type: T } = require('@sinclair/typebox')" : "import { Type as T } from '@sinclair/typebox'"}
-
-  /**
-   * @param {JsonArray | JsonRecord} [options]
-   * @returns {ReturnType<typeof T.Unsafe<Json>>}
-   */
-  const Json = (options) => T.Unsafe(T.Any(options))
-
-  __CACHE__
-  `)
-
+  w.writeLine(`
+    /**
+     * @namespace
+     */
+    const refs = {}`)
+  refs.forEach((schema, path) => {
+    w.writeLine(`refs['${path}'] = ${schema}`)
+  })
   w.blankLineIfLastNot()
 
   // @ts-ignore
@@ -176,16 +141,10 @@ export const write = async (path, opts = {}) => {
 
   const text = w.toString()
 
-  const cacheW = createCodeBlockWriter()
-  cacheW.write('const cache = {}\n')
-  cache.forEach((value, hash) => {
-    cacheW.write(`cache['${hash}'] = ${value}\n`)
-  })
-
-  return await prettier.format(text.replace('__CACHE__', `${cacheW.toString()}\n`), {
+  return await prettier.format(text, {
     semi: false,
     singleQuote: true,
-    parser: 'typescript',
+    parser: 'babel',
     trailingComma: 'none',
   })
 
@@ -201,6 +160,16 @@ export const write = async (path, opts = {}) => {
   function writeType(schema, isRequired = false) {
     schema = cleanupSchema(schema)
 
+    if (schema[kRef]) {
+      writeRef(schema, isRequired)
+      return
+    }
+
+    // fastify converts const values into enums with a single value, we need to fix it
+    if (schema?.enum?.length === 1) {
+      schema.const = schema.enum[0]
+    }
+
     if (schema.const) {
       writeLiteral(schema, isRequired)
       return
@@ -214,7 +183,7 @@ export const write = async (path, opts = {}) => {
       return
     }
 
-    if (schema.anyOf || schema.allOf) {
+    if (schema.anyOf || schema.allOf || schema.oneOf) {
       writeCompound(schema, isRequired)
       return
     }
@@ -244,12 +213,14 @@ export const write = async (path, opts = {}) => {
   }
 
   function writeLiteral(schema, isRequired = false) {
-    let { const: value, type, ...options } = schema
+    let { const: value } = schema
+
+    let options = extractSchemaOptions(schema)
 
     value = JSON.stringify(value)
 
     if (Object.keys(options).length) {
-      options = JSON.stringify(options)
+      options = `,${JSON.stringify(options)}`
     } else {
       options = ''
     }
@@ -257,37 +228,46 @@ export const write = async (path, opts = {}) => {
     w.write(`${isRequired ? '' : 'T.Optional('}T.Literal(${value}${options})${isRequired ? '' : ')'}`)
   }
 
+  function writeRef(schema, isRequired = false) {
+    let options = extractSchemaOptions(schema)
+    if (Object.keys(options).length) {
+      options = `,${JSON.stringify(options)}`
+    } else {
+      options = ''
+    }
+
+    const value = `CloneType(refs['${schema[kRef]}']${options})`
+    w.write(`${isRequired ? '' : 'T.Optional('}${value}${isRequired ? '' : ')'}`)
+  }
+
   function writeCompound(schema, isRequired = false) {
-    const { enum: _, type, anyOf, allOf, ...options } = schema
+    const { enum: _, type, anyOf, allOf, oneOf, ...options } = schema
 
     if (!isRequired) w.write('T.Optional(')
 
-    const compoundType = anyOf ? 'Union' : 'Intersect'
-    const list = anyOf || allOf
+    const compoundType = anyOf
+      ? 'T.Union'
+      : allOf
+        ? 'T.Intersect'
+        : 'UnionOneOf'
 
-    w.write(`T.${compoundType}(`)
+    const list = anyOf || allOf || oneOf
 
-    const hash = checksum(safeStringify({ list }))
-
-    if (!cache.has(hash)) {
-      cache.set(hash, getWriterString(() => {
-        w.write('[')
-        list.forEach((subSchema) => {
-          if (typeof subSchema !== 'object') {
-            w.write(`T.Literal(${JSON.stringify(subSchema)})`)
-          } else {
-            if (!('type' in subSchema)) {
-              subSchema.type = type
-            }
-            writeType(subSchema, true)
-          }
-          w.write(',\n')
-        })
-        w.write(']')
-      }))
-    }
-
-    w.write(`cache['${hash}']`)
+    w.write(`${compoundType}(`)
+    // TODO: use ref
+    w.write('[')
+    list.forEach((subSchema) => {
+      if (typeof subSchema !== 'object') {
+        w.write(`T.Literal(${JSON.stringify(subSchema)})`)
+      } else {
+        if (!('type' in subSchema)) {
+          subSchema.type = type
+        }
+        writeType(subSchema, true)
+      }
+      w.write(',\n')
+    })
+    w.write(']')
 
     if (Object.keys(options).length > 0) {
       w.write(`,${JSON.stringify(options)}`)
@@ -304,40 +284,47 @@ export const write = async (path, opts = {}) => {
     if (!isRequired) w.write('T.Optional(')
 
     let optionsString
-    if (Object.keys(options).length > 0) {
-      optionsString = JSON.stringify(options)
+    const optionsKeys = Object.keys(options)
+    if (optionsKeys.length > 0) {
+      optionsString = getWriterString(() => {
+        w.inlineBlock(() => {
+          optionsKeys.forEach((optionKey) => {
+            const value = options[optionKey]
+            w.write(`'${optionKey}': `)
+            if (optionKey === 'additionalProperties' && value?.type) {
+              writeType(value, true)
+            } else {
+              w.write(JSON.stringify(value))
+            }
+            w.write(',\n')
+          })
+        })
+      })
     }
 
-    if (Object.keys(properties).length === 0) {
-      w.write(`Json(${optionsString || ''})`)
+    const propertyKeys = Object.keys(properties)
+
+    if (propertyKeys.length === 0) {
+      w.write(`T.Object({}${optionsString ? ',' + optionsString : ''})`)
     } else {
-      const hash = checksum(safeStringify({ properties, required }))
-
       w.write('T.Object(')
-
-      if (!cache.has(hash)) {
-        cache.set(hash, getWriterString(() => {
-          if (Object.keys(properties).length > 0) {
-            w.inlineBlock(() => {
-              Object.keys(properties).forEach((subSchemaKey) => {
-                const subSchema = properties[subSchemaKey]
-                w.write(`'${subSchemaKey}': `)
-                writeType(subSchema, required.includes(subSchemaKey))
-                w.write(',\n')
-              })
-            })
-          } else {
-            w.write('{}')
-          }
-        }))
+      // TODO: use ref
+      if (propertyKeys.length > 0) {
+        w.inlineBlock(() => {
+          propertyKeys.forEach((subSchemaKey) => {
+            const subSchema = properties[subSchemaKey]
+            w.write(`'${subSchemaKey}': `)
+            writeType(subSchema, required.includes(subSchemaKey))
+            w.write(',\n')
+          })
+        })
+      } else {
+        w.write('{}')
       }
-
-      w.write(`cache['${hash}']`)
 
       if (optionsString) {
         w.write(`,${optionsString}`)
       }
-
       w.write(')')
     }
 
@@ -367,29 +354,23 @@ export const write = async (path, opts = {}) => {
       w.write('T.Array(')
       w.write('T.Any()')
     } else {
-      const hash = checksum(JSON.stringify(items))
-
       if (isArray) {
         delete options.additionalItems
         delete options.minItems
         delete options.maxItems
         w.write('T.Tuple(')
-        cache.set(hash, getWriterString(() => {
-          w.write('[')
-          items.forEach((subSchema) => {
-            writeType(subSchema, true)
-            w.write(',')
-          })
-          w.write(']')
-        }))
+        // TODO: use ref
+        w.write('[')
+        items.forEach((subSchema) => {
+          writeType(subSchema, true)
+          w.write(',')
+        })
+        w.write(']')
       } else {
         w.write('T.Array(')
-        cache.set(hash, getWriterString(() => {
-          writeType(items, true)
-        }))
+        // TODO: use ref
+        writeType(items, true)
       }
-
-      w.write(`cache['${hash}']`)
     }
 
     if (Object.keys(options).length > 0) {
@@ -515,23 +496,16 @@ export const write = async (path, opts = {}) => {
 
     if (!isRequired) w.write('T.Optional(')
 
-    const hash = checksum(JSON.stringify(parameters))
-
     w.write('T.Object(')
 
-    if (!cache.has(hash)) {
-      cache.set(hash, getWriterString(() => {
-        w.inlineBlock(() => {
-          parameters.forEach((param) => {
-            w.write(`'${param.name}': `)
-            writeParameter(param)
-            w.write(',\n')
-          })
-        })
-      }))
-    }
-
-    w.write(`cache['${hash}']`)
+    // TODO: use ref
+    w.inlineBlock(() => {
+      parameters.forEach((param) => {
+        w.write(`'${param.name}': `)
+        writeParameter(param)
+        w.write(',\n')
+      })
+    })
 
     w.write(')')
 
@@ -555,15 +529,8 @@ export const write = async (path, opts = {}) => {
       param.schema['x-in'] = inValue
     }
 
-    const hash = checksum(JSON.stringify(param))
-
-    if (!cache.has(hash)) {
-      cache.set(hash, getWriterString(() => {
-        writeType(param.schema, param.required)
-      }))
-    }
-
-    w.write(`cache['${hash}']`)
+    // TODO: use ref
+    writeType(param.schema, param.required)
   }
 
   function writeComponents(componentType, components) {

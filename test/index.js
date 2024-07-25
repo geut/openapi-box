@@ -90,6 +90,26 @@ const querystring = Type.Object({
   }),
 })
 
+const CoordinatesSchema = Type.Object({
+  lat: Type.Number(),
+  long: Type.Number(),
+}, {
+  $id: 'Coordinates',
+})
+
+app.addSchema(CoordinatesSchema)
+
+const AddressSchema = Type.Array(
+  Type.Object({
+    title: Type.String(),
+    address: Type.String(),
+    coordinates: Type.Ref(CoordinatesSchema),
+  }),
+  { $id: 'Address' }
+)
+
+app.addSchema(AddressSchema)
+
 const body = Type.Object({
   human: Type.Object({
     name: Type.String(),
@@ -99,12 +119,7 @@ const body = Type.Object({
       Type.Literal('joker'),
     ]),
   }),
-  address: Type.Array(
-    Type.Object({
-      title: Type.String(),
-      address: Type.String(),
-    })
-  ),
+  address: Type.Ref(AddressSchema),
   recursive: Type.Object({}),
 })
 
@@ -124,7 +139,7 @@ app.post('/some-route/:id', {
       }, { description: 'description response' }),
     },
   },
-}, (req, reply) => ({
+}, req => ({
   headers: {
     auth: req.headers.auth,
   },
@@ -142,14 +157,14 @@ test('basic test', async () => {
 
   await mkdir('./tmp').catch(() => {})
 
-  await test('esm', async () => {
+  await test('esm', async (t) => {
     await writeFile('./tmp/schema.js', await write(JSON.parse(JSON.stringify(app.swagger()))))
-    assert.equal(await readFile('./tmp/schema.js', 'utf8'), await readFile('./test/schema.txt', 'utf8'))
+    t.assert.snapshot(await readFile('./tmp/schema.js', 'utf8'))
   })
 
-  await test('basic test cjs', async () => {
+  await test('basic test cjs', async (t) => {
     await writeFile('./tmp/schema.cjs', await write(JSON.parse(JSON.stringify(app.swagger())), { cjs: true }))
-    assert.equal(await readFile('./tmp/schema.cjs', 'utf8'), await readFile('./test/schema.cjs.txt', 'utf8'))
+    t.assert.snapshot(await readFile('./tmp/schema.cjs', 'utf8'))
   })
 
   await test('client', async () => {
@@ -275,6 +290,10 @@ test('basic test', async () => {
           address: [{
             address: 'addres1',
             title: 'test',
+            coordinates: {
+              lat: 1,
+              long: 2,
+            },
           }],
           recursive: {
             testing: true,
@@ -290,9 +309,9 @@ test('basic test', async () => {
   })
 })
 
-test('petstore.json', async () => {
+test('petstore.json', async (t) => {
   await writeFile('./tmp/petstore.js', await write('./test/petstore.json'))
-  assert.equal(await readFile('./tmp/petstore.js', 'utf8'), await readFile('./test/petstore.txt', 'utf8'))
+  t.assert.snapshot(await readFile('./tmp/petstore.js', 'utf8'))
 
   const { components } = await import('../tmp/petstore.js')
 
@@ -328,9 +347,9 @@ test('petstore.json', async () => {
   }))
 })
 
-test('petstore.yaml', async () => {
+test('petstore.yaml', async (t) => {
   await writeFile('./tmp/petstore.yaml.js', await write('./test/petstore.json'))
-  assert.equal(await readFile('./tmp/petstore.yaml.js', 'utf8'), await readFile('./test/petstore.txt', 'utf8'))
+  t.assert.snapshot(await readFile('./tmp/petstore.yaml.js', 'utf8'))
 
   const { components } = await import('../tmp/petstore.yaml.js')
 
