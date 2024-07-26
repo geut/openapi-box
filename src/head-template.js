@@ -53,7 +53,6 @@ export default (cjs = false) => `/* eslint eslint-comments/no-unlimited-disable:
    * @template {TSchema[]} T
    * @param {[...T]} oneOf
    * @param {SchemaOptions} [options={}]
-   * @returns {TUnionOneOf<T>}
    */
   const UnionOneOf = (oneOf, options = {}) => {
     /**
@@ -76,7 +75,7 @@ export default (cjs = false) => `/* eslint eslint-comments/no-unlimited-disable:
     if (!TypeRegistry.Has('UnionOneOf'))
       TypeRegistry.Set('UnionOneOf', UnionOneOfCheck)
 
-    return /** @type {TUnionOneOf<typeof oneOf>} */({
+    return /** @type {TUnionOneOf<T>} */({
       ...options,
       [Kind]: 'UnionOneOf',
       oneOf
