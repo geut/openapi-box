@@ -292,8 +292,8 @@ export const write = async (source, opts = {}) => {
         w.inlineBlock(() => {
           // this is necessary to allow validate dynamic json objects
           if (!optionsKeys.includes('additionalProperties')) {
-            // optionsKeys.push('additionalProperties')
-            // options.additionalProperties = true
+            optionsKeys.push('additionalProperties')
+            options.additionalProperties = true
           }
 
           optionsKeys.forEach((optionKey) => {
