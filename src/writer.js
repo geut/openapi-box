@@ -286,16 +286,16 @@ export const write = async (source, opts = {}) => {
     let optionsString
     const optionsKeys = Object.keys(options)
     const propertyKeys = Object.keys(properties)
-    // if it has options or the properties are empty meaning it's a json object
-    if (optionsKeys.length > 0 || propertyKeys.length === 0) {
+
+    // this is necessary to allow validate dynamic json objects e.g "metadata: { type: 'object' }"
+    if (propertyKeys.length === 0 && !optionsKeys.includes('additionalProperties')) {
+      optionsKeys.push('additionalProperties')
+      options.additionalProperties = true
+    }
+
+    if (optionsKeys.length > 0) {
       optionsString = getWriterString(() => {
         w.inlineBlock(() => {
-          // this is necessary to allow validate dynamic json objects
-          if (!optionsKeys.includes('additionalProperties')) {
-            optionsKeys.push('additionalProperties')
-            options.additionalProperties = true
-          }
-
           optionsKeys.forEach((optionKey) => {
             const value = options[optionKey]
             w.write(`'${optionKey}': `)
@@ -311,7 +311,7 @@ export const write = async (source, opts = {}) => {
     }
 
     if (propertyKeys.length === 0) {
-      w.write(`T.Object({},${optionsString})`)
+      w.write(`T.Object({}${optionsString ? ',' + optionsString : ''})`)
     } else {
       w.write('T.Object(')
       // TODO: use ref
