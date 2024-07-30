@@ -128,8 +128,35 @@ const parseResponse = async (endpoint, res) => {
 
 const defaultBodyParser = ({ args, contentType }) => {
   if (!args?.body) return
-  if (!contentType || !contentType.includes('application/json')) return args.body
-  return typeof args.body === 'string' ? args.body : JSON.stringify(args.body)
+
+  // form
+  if (!contentType || contentType.includes('application/x-www-form-urlencoded') || contentType.includes('multipart/form-data')) {
+    const form = new FormData()
+    Object.keys(args.body).forEach((prop) => {
+      const value = args.body[prop]
+      const type = Object.prototype.toString.call(value)
+      if (type === '[object Uint8Array]') {
+        form.append(prop, new Blob([value]))
+        return
+      }
+
+      if (type === '[object Object]') {
+        form.append(prop, JSON.stringify(value))
+        return
+      }
+
+      // Blob or File or string
+      form.append(prop, value)
+    })
+    return args.body
+  }
+
+  // json
+  if (contentType.includes('application/json')) {
+    return typeof args.body === 'string' ? args.body : JSON.stringify(args.body)
+  }
+
+  return args.body
 }
 
 const defaultArgsValidator = async (req) => {

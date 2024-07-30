@@ -242,10 +242,10 @@ export const write = async (source, opts = {}) => {
     if (!isRequired) w.write('T.Optional(')
 
     const compoundType = anyOf
-      ? 'T.Union'
+      ? 'T.Union' // anyOf
       : allOf
-        ? 'T.Intersect'
-        : 'UnionOneOf'
+        ? 'T.Intersect' // allOff
+        : 'T.Union' // oneOf
 
     const list = anyOf || allOf || oneOf
 
@@ -335,6 +335,11 @@ export const write = async (source, opts = {}) => {
 
   function writeScalar(schema, isRequired = false) {
     let { type, ...options } = schema
+
+    if (type === 'string' && options?.format === 'binary') {
+      w.write(`${isRequired ? '' : 'T.Optional('}Binary()${isRequired ? '' : ')'}`)
+      return
+    }
 
     if (Object.keys(options).length) {
       options = JSON.stringify(options)
@@ -459,6 +464,7 @@ export const write = async (source, opts = {}) => {
       ...schema,
     }, requestBody.required)
   }
+
   function writeResponse(response) {
     const obj = {}
 

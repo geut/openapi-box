@@ -41,43 +41,44 @@ export default (cjs = false) => `/* eslint eslint-comments/no-unlimited-disable:
   ${cjs ? "const { Value } = require('@sinclair/typebox/value')" : "import { Value } from '@sinclair/typebox/value'"}
 
   /**
-   * @template {TSchema[]} T
    * @typedef {{
-   *  [Kind]: 'UnionOneOf'
-   *  static: { [K in keyof T]: Static<T[K]> }[number]
-   *  oneOf: T
-   * } & TSchema} TUnionOneOf
+   *  [Kind]: 'Binary'
+   *  static: string | File | Blob | Uint8Array
+   *  anyOf: [{
+   *    type: 'object',
+   *    additionalProperties: true
+   *  }, {
+   *    type: 'string',
+   *    format: 'binary'
+   *  }]
+   * } & TSchema} TBinary
    */
 
   /**
-   * @template {TSchema[]} T
-   * @param {[...T]} oneOf
-   * @param {SchemaOptions} [options={}]
+   * @returns {TBinary}
    */
-  const UnionOneOf = (oneOf, options = {}) => {
+  const Binary = () => {
     /**
-     * Checks if the value matches exactly one schema in the union.
-     *
-     * @param {TUnionOneOf<TSchema[]>} schema - The union schema to check against.
-     * @param {unknown} value - The value to check.
-     * @returns {boolean} True if the value matches exactly one schema, otherwise false.
+     * @param {TBinary} schema
+     * @param {unknown} value
+     * @returns {boolean}
      */
-    function UnionOneOfCheck(schema, value) {
-      return (
-        1 ===
-        schema.oneOf.reduce(
-          (acc, schema) => (Value.Check(schema, value) ? acc + 1 : acc),
-          0
-        )
-      )
+    function BinaryCheck(schema, value) {
+      const type = Object.prototype.toString.call(value)
+      return type === '[object Blob]' || type === '[object File]' || type === '[object String]' || type === '[object Uint8Array]'
     }
 
-    if (!TypeRegistry.Has('UnionOneOf'))
-      TypeRegistry.Set('UnionOneOf', UnionOneOfCheck)
+    if (!TypeRegistry.Has('Binary'))
+      TypeRegistry.Set('Binary', BinaryCheck)
 
-    return /** @type {TUnionOneOf<T>} */({
-      ...options,
-      [Kind]: 'UnionOneOf',
-      oneOf
+    return /** @type {TBinary} */({
+      anyOf: [{
+        type: 'object',
+        additionalProperties: true
+      }, {
+        type: 'string',
+        format: 'binary'
+      }],
+      [Kind]: 'Binary'
     })
   }`
