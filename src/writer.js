@@ -72,14 +72,10 @@ export const write = async (source, opts = {}) => {
     throw err
   })
 
-  w.writeLine(`
-    /**
-     * @namespace
-     */
-    const refs = {}`)
   refs.forEach((schema, path) => {
-    w.writeLine(`refs['${path}'] = ${schema}`)
+    w.writeLine(`const ${path} = ${schema}`)
   })
+
   w.blankLineIfLastNot()
 
   // @ts-ignore
@@ -236,7 +232,7 @@ export const write = async (source, opts = {}) => {
       options = ''
     }
 
-    const value = `CloneType(refs['${schema[kRef]}']${options})`
+    const value = `CloneType(${schema[kRef]}${options})`
     w.write(`${isRequired ? '' : 'T.Optional('}${value}${isRequired ? '' : ')'}`)
   }
 
