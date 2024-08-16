@@ -390,3 +390,13 @@ test('parse some openapi examples', async (t) => {
     await write('https://raw.githubusercontent.com/openai/openai-openapi/master/openapi.yaml')
   })
 })
+
+test('nullable test', async (t) => {
+  await writeFile('./tmp/test-nullable.yaml.js', await write('./test/test-nullable.yaml'))
+  t.assert.snapshot(await readFile('./tmp/petstore.yaml.js', 'utf8'))
+  const { components } = await import('../tmp/test-nullable.yaml.js')
+  assert.deepEqual(components.schemas.Test, Type.Union([Type.Null(), Type.Object({
+    testStr: Type.Optional(Type.Union([Type.Null(), Type.String({ minLength: 2, maxLength: 2 })])),
+    testArr: Type.Union([Type.Null(), Type.Array(Type.Number())]),
+  })]))
+})
