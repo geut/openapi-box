@@ -154,10 +154,11 @@ export const write = async (source, opts = {}) => {
   }
 
   function writeType(schema, isRequired = false) {
+    const isNullable = !!schema.nullable
     schema = cleanupSchema(schema)
 
     if (schema[kRef]) {
-      writeRef(schema, isRequired)
+      writeRef(schema, isRequired, isNullable)
       return
     }
 
@@ -167,7 +168,7 @@ export const write = async (source, opts = {}) => {
     }
 
     if (schema.const) {
-      writeLiteral(schema, isRequired)
+      writeLiteral(schema, isRequired, isNullable)
       return
     }
 
@@ -175,12 +176,12 @@ export const write = async (source, opts = {}) => {
       writeCompound({
         ...schema,
         anyOf: schema.enum,
-      }, isRequired)
+      }, isRequired, isNullable)
       return
     }
 
     if (schema.anyOf || schema.allOf || schema.oneOf) {
-      writeCompound(schema, isRequired)
+      writeCompound(schema, isRequired, isNullable)
       return
     }
 
@@ -194,21 +195,39 @@ export const write = async (source, opts = {}) => {
     }
 
     if (schema.type === 'object') {
-      writeObject(schema, isRequired)
+      writeObject(schema, isRequired, isNullable)
       return
     }
 
     if (schema.type === 'array') {
-      writeArray(schema, isRequired)
+      writeArray(schema, isRequired, isNullable)
       return
     }
 
     if (schema.type in scalarTypes) {
-      writeScalar(schema, isRequired)
+      writeScalar(schema, isRequired, isNullable)
     }
   }
 
-  function writeLiteral(schema, isRequired = false) {
+  /**
+   * @param {boolean} isRequired
+   * @param {boolean} isNullable
+   */
+  function startNullish(isRequired, isNullable) {
+    if (!isRequired) w.write('T.Optional(')
+    if (isNullable) w.write('T.Union([T.Null(), ')
+  }
+
+  /**
+   * @param {boolean} isRequired
+   * @param {boolean} isNullable
+   */
+  function endNullish(isRequired, isNullable) {
+    if (isNullable) w.write('])')
+    if (!isRequired) w.write(')')
+  }
+
+  function writeLiteral(schema, isRequired = false, isNullable = false) {
     let { const: value } = schema
 
     let options = extractSchemaOptions(schema)
@@ -221,10 +240,12 @@ export const write = async (source, opts = {}) => {
       options = ''
     }
 
-    w.write(`${isRequired ? '' : 'T.Optional('}T.Literal(${value}${options})${isRequired ? '' : ')'}`)
+    startNullish(isRequired, isNullable)
+    w.write(`T.Literal(${value}${options})`)
+    endNullish(isRequired, isNullable)
   }
 
-  function writeRef(schema, isRequired = false) {
+  function writeRef(schema, isRequired = false, isNullable = false) {
     let options = extractSchemaOptions(schema)
     if (Object.keys(options).length) {
       options = `,${JSON.stringify(options)}`
@@ -233,13 +254,15 @@ export const write = async (source, opts = {}) => {
     }
 
     const value = `CloneType(${schema[kRef]}${options})`
-    w.write(`${isRequired ? '' : 'T.Optional('}${value}${isRequired ? '' : ')'}`)
+    startNullish(isRequired, isNullable)
+    w.write(`${value}`)
+    endNullish(isRequired, isNullable)
   }
 
-  function writeCompound(schema, isRequired = false) {
+  function writeCompound(schema, isRequired = false, isNullable = false) {
     const { enum: _, type, anyOf, allOf, oneOf, ...options } = schema
 
-    if (!isRequired) w.write('T.Optional(')
+    startNullish(isRequired, isNullable)
 
     const compoundType = anyOf
       ? 'T.Union' // anyOf
@@ -271,13 +294,13 @@ export const write = async (source, opts = {}) => {
 
     w.write(')')
 
-    if (!isRequired) w.write(')')
+    endNullish(isRequired, isNullable)
   }
 
-  function writeObject(schema, isRequired = false) {
+  function writeObject(schema, isRequired = false, isNullable = false) {
     const { type, properties = {}, required = [], ...options } = schema
 
-    if (!isRequired) w.write('T.Optional(')
+    startNullish(isRequired, isNullable)
 
     let optionsString
     const optionsKeys = Object.keys(options)
@@ -330,14 +353,16 @@ export const write = async (source, opts = {}) => {
       w.write(')')
     }
 
-    if (!isRequired) w.write(')')
+    endNullish(isRequired, isNullable)
   }
 
-  function writeScalar(schema, isRequired = false) {
+  function writeScalar(schema, isRequired = false, isNullable = false) {
     let { type, ...options } = schema
 
     if (type === 'string' && options?.format === 'binary') {
-      w.write(`${isRequired ? '' : 'T.Optional('}Binary()${isRequired ? '' : ')'}`)
+      startNullish(isRequired, isNullable)
+      w.write('Binary()')
+      endNullish(isRequired, isNullable)
       return
     }
 
@@ -347,13 +372,15 @@ export const write = async (source, opts = {}) => {
       options = ''
     }
 
-    w.write(`${isRequired ? '' : 'T.Optional('}T.${scalarTypes[type]}(${options})${isRequired ? '' : ')'}`)
+    startNullish(isRequired, isNullable)
+    w.write(`T.${scalarTypes[type]}(${options})`)
+    endNullish(isRequired, isNullable)
   }
 
-  function writeArray(schema, isRequired = false) {
+  function writeArray(schema, isRequired = false, isNullable = false) {
     const { type, items, ...options } = schema
 
-    if (!isRequired) w.write('T.Optional(')
+    startNullish(isRequired, isNullable)
 
     const isArray = Array.isArray(items)
 
@@ -386,7 +413,7 @@ export const write = async (source, opts = {}) => {
 
     w.write(')')
 
-    if (!isRequired) w.write(')')
+    endNullish(isRequired, isNullable)
   }
 
   function buildSchema(paths, pathKey, method) {

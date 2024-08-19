@@ -1,0 +1,27 @@
+openapi: 3.0.3
+info:
+  description: Title
+  version: 1.0.0
+servers:
+  - url: https
+
+components:
+  schemas:
+    Test:
+      type: object
+      nullable: true
+      required:
+        - testArr
+      properties:
+        testStr:
+          type: string
+          description: Should be a 2 character string, null or undefined
+          minLength: 2
+          maxLength: 2
+          nullable: true
+        testArr:
+          type: array
+          description: Should be an array of numbers or null
+          items:
+            type: number
+          nullable: true
