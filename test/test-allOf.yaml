@@ -1,0 +1,21 @@
+openapi: 3.0.3
+info:
+  description: Title
+  version: 1.0.0
+servers:
+  - url: https
+
+components:
+  schemas:
+    A:
+      type: object
+      properties:
+        a:
+          type: string
+    AB:
+      type: object
+      properties:
+        b:
+          type: string
+      allOf:
+        - $ref: '#/components/schemas/A'

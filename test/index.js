@@ -400,3 +400,16 @@ test('nullable test', async (t) => {
     testArr: Type.Union([Type.Null(), Type.Array(Type.Number())]),
   })]))
 })
+
+test('allOf test', async (t) => {
+  await writeFile('./tmp/test-allOf.yaml.js', await write('./test/test-allOf.yaml'))
+  const { components } = await import('../tmp/test-allOf.yaml.js')
+  assert.deepEqual(components.schemas.AB, Type.Intersect([
+    Type.Object({
+      a: Type.Optional(Type.String())
+    }),
+    Type.Object({
+      b: Type.Optional(Type.String())
+    })
+  ]))
+})
