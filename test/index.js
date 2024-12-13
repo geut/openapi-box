@@ -2,11 +2,12 @@ import assert from 'node:assert'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import test, { after } from 'node:test'
 
-import fastifySwagger from '@fastify/swagger'
-import { Type } from '@sinclair/typebox'
 import { expectTypeOf } from 'expect-type'
 import fastify from 'fastify'
 import qs from 'qs'
+
+import fastifySwagger from '@fastify/swagger'
+import { Type } from '@sinclair/typebox'
 
 import { createClient } from '../src/client.js'
 import { write } from '../src/writer.js'
@@ -405,10 +406,10 @@ test('allOf test', async (t) => {
   const { components } = await import('../tmp/test-allOf.yaml.js')
   assert.deepEqual(components.schemas.AB, Type.Intersect([
     Type.Object({
-      a: Type.Optional(Type.String())
+      a: Type.Optional(Type.String()),
     }),
     Type.Object({
-      b: Type.Optional(Type.String())
-    })
+      b: Type.Optional(Type.String()),
+    }),
   ]))
 })

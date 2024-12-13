@@ -1,9 +1,10 @@
 /** @typedef {import('@apidevtools/json-schema-ref-parser').JSONSchema} JSONSchema */
 
-import SwaggerParser from '@apidevtools/json-schema-ref-parser'
 import CodeBlockWriter from 'code-block-writer'
 import pascalcase from 'pascalcase'
 import * as prettier from 'prettier'
+
+import SwaggerParser from '@apidevtools/json-schema-ref-parser'
 
 import { cleanupSchema, extractSchemaOptions, kRef } from './cleanup.js'
 import headTemplate from './head-template.js'
@@ -277,6 +278,7 @@ export const write = async (source, opts = {}) => {
       delete options.properties
       delete options.required
 
+      // eslint-disable-next-line no-unused-vars, no-unreachable-loop
       for (const key in properties) {
         list = list.concat({ type: 'object', properties, required })
         break

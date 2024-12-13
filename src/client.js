@@ -68,8 +68,9 @@
  * }} RequestInfo
  */
 
-import { Value } from '@sinclair/typebox/value'
 import qs from 'fast-querystring'
+
+import { Value } from '@sinclair/typebox/value'
 
 import './formats.js'
 
