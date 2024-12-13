@@ -270,7 +270,18 @@ export const write = async (source, opts = {}) => {
         ? 'T.Intersect' // allOff
         : 'T.Union' // oneOf
 
-    const list = anyOf || allOf || oneOf
+    let list = anyOf || allOf || oneOf
+
+    if ('properties' in options) {
+      const { properties, required = [] } = options
+      delete options.properties
+      delete options.required
+
+      for (const key in properties) {
+        list = list.concat({ type: 'object', properties, required })
+        break
+      }
+    }
 
     w.write(`${compoundType}(`)
     // TODO: use ref
