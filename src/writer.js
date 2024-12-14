@@ -561,6 +561,8 @@ export const write = async (source, opts = {}) => {
   }
 
   function writeParameter(param) {
+    param = { ...param }
+
     if (!param.schema) {
       param.schema = {
         items: param.items,
