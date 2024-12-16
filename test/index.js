@@ -413,3 +413,19 @@ test('allOf test', async (t) => {
     }),
   ]))
 })
+
+test('parameter refs test', async (t) => {
+  await writeFile('./tmp/test-parameter-refs.yaml.js', await write('./test/test-parameter-refs.yaml'))
+  const { schema } = await import('../tmp/test-parameter-refs.yaml.js')
+  for (const path of ['/foo1', '/foo2']) {
+    assert.deepEqual(schema[path].GET.args, Type.Optional(
+      Type.Object({
+        query: Type.Optional(
+          Type.Object({
+            bar: Type.Optional(Type.String({ 'x-in': 'query' })),
+          })
+        ),
+      })
+    ))
+  }
+})
