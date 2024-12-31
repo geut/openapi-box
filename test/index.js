@@ -2,12 +2,11 @@ import assert from 'node:assert'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import test, { after } from 'node:test'
 
+import fastifySwagger from '@fastify/swagger'
+import { Type } from '@sinclair/typebox'
 import { expectTypeOf } from 'expect-type'
 import fastify from 'fastify'
 import qs from 'qs'
-
-import fastifySwagger from '@fastify/swagger'
-import { Type } from '@sinclair/typebox'
 
 import { createClient } from '../src/client.js'
 import { write } from '../src/writer.js'

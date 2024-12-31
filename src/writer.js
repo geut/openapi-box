@@ -1,10 +1,9 @@
 /** @typedef {import('@apidevtools/json-schema-ref-parser').JSONSchema} JSONSchema */
 
+import SwaggerParser from '@apidevtools/json-schema-ref-parser'
 import CodeBlockWriter from 'code-block-writer'
 import pascalcase from 'pascalcase'
 import * as prettier from 'prettier'
-
-import SwaggerParser from '@apidevtools/json-schema-ref-parser'
 
 import { cleanupSchema, extractSchemaOptions, kRef } from './cleanup.js'
 import headTemplate from './head-template.js'
