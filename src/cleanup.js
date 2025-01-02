@@ -8,6 +8,7 @@ const validFields = new Set([
   'required',
   'pattern',
   'enum',
+  'const',
   'minimum',
   'maximum',
   'exclusiveMinimum',
