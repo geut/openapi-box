@@ -288,7 +288,9 @@ export const write = async (source, opts = {}) => {
     // TODO: use ref
     w.write('[')
     list.forEach((subSchema) => {
-      if (typeof subSchema !== 'object') {
+      if (subSchema === null) {
+        w.write('T.Null()')
+      } else if (typeof subSchema !== 'object') {
         w.write(`T.Literal(${JSON.stringify(subSchema)})`)
       } else {
         if (!('type' in subSchema)) {

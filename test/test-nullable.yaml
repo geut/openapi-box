@@ -12,6 +12,7 @@ components:
       nullable: true
       required:
         - testArr
+        - testEnum
       properties:
         testStr:
           type: string
@@ -24,4 +25,11 @@ components:
           description: Should be an array of numbers or null
           items:
             type: number
+          nullable: true
+        testEnum:
+          type: string
+          enum:
+            - foo
+            - bar
+            - null
           nullable: true

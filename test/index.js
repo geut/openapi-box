@@ -397,6 +397,7 @@ test('nullable test', async (t) => {
   assert.deepEqual(components.schemas.Test, Type.Union([Type.Null(), Type.Object({
     testStr: Type.Optional(Type.Union([Type.Null(), Type.String({ minLength: 2, maxLength: 2 })])),
     testArr: Type.Union([Type.Null(), Type.Array(Type.Number())]),
+    testEnum: Type.Union([Type.Null(), Type.Union([Type.Literal('foo'), Type.Literal('bar'), Type.Null()])]),
   })]))
 })
 
